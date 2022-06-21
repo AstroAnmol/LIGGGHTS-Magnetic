@@ -184,6 +184,14 @@ void FixMagnetic::init()
   fix_susceptibility_ =
     static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
 
+  // pre-calculate susceptibility for possible contact material combinations
+  for(int i=1;i< max_type+1; i++)
+      for(int j=1;j<max_type+1;j++)
+      {
+          susceptibility_[i-1] = fix_susceptibility_->compute_vector(i-1);
+          if(susceptibility_[i-1] <= 0.)
+            error->all(FLERR,"Fix magnetic: magnetic susceptibility must not be <= 0");
+      }
 }
 
 /* ---------------------------------------------------------------------- */
