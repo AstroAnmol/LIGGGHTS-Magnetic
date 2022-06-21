@@ -40,6 +40,11 @@ class FixMagnetic : public Fix {
 
   int maxatom;
   double **hfield;
+
+protected:
+  class FixPropertyGlobal* fix_susceptibility_;
+  double *susceptibility_;
+
 };
 
 }

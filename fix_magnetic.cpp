@@ -108,6 +108,9 @@ FixMagnetic::~FixMagnetic()
   delete [] ystr;
   delete [] zstr;
   memory->destroy(hfield);
+
+  if (susceptibility_)
+    delete []susceptibility_;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -173,6 +176,14 @@ void FixMagnetic::init()
   // error checks on coarsegraining
   if(force->cg_active())
     error->cg(FLERR,this->style);
+
+  int max_type = atom->get_properties()->max_type();
+
+  if (susceptibility_) delete []susceptibility_;
+  susceptibility_ = new double[max_type];
+  fix_susceptibility_ =
+    static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
+
 }
 
 /* ---------------------------------------------------------------------- */
@@ -215,6 +226,7 @@ void FixMagnetic::post_force(int vflag)
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   int nghost = atom->nghost;
+  int *type = atom->type;
   // reallocate hfield array if necessary
 
   if (varflag == ATOM && nlocal > maxatom) {
@@ -232,7 +244,7 @@ void FixMagnetic::post_force(int vflag)
       i = ilist[ii];
 
       if (mask[i] & groupbit) {
-        double susc=0.96;
+        double susc= susceptibility_[type[i]-1];
         double susc_eff=3*susc/(susc+3);//3*(susc-1)/(susc+2);
         double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/u;
         mu[i][0] = C*ex;
