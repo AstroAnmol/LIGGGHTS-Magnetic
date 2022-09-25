@@ -37,6 +37,8 @@
     tjleps@gmail.com
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
+#include <eigen-3.4.0/Eigen/Dense>
+#include <iostream>
 
 #include <math.h>
 #include <string.h>
@@ -222,7 +224,7 @@ void FixMagnetic::post_force(int vflag)
   //std::cout<<"made it this far"<<std::endl;
   int i,j,ii,jj,inum,jnum;
   int *ilist,*jlist,*numneigh,**firstneigh,*slist;
-  double dx, dy, dz, fx, fy, fz, rsq, r, mir, mjr, mumu, A, K, muR;
+  double rsq, r, mir, mjr, mumu, A, K, muR;
   double *rad = atom->radius;
   double **x = atom->x;
   double **mu = atom->mu;
@@ -237,6 +239,8 @@ void FixMagnetic::post_force(int vflag)
   int *type = atom->type;
   // reallocate hfield array if necessary
 
+  Eigen::Vector3d dx;
+  
   if (varflag == ATOM && nlocal > maxatom) {
     maxatom = atom->nmax;
     memory->destroy(hfield);
@@ -257,37 +261,36 @@ void FixMagnetic::post_force(int vflag)
         double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/u;
         mu[i][0] = C*ex;
         mu[i][1] = C*ey;
-        mu[i][2] = C*ez;        
+        mu[i][2] = C*ez;
         jlist = firstneigh[i];
         jnum = numneigh[i];
+        Eigen::Vector3d mu_i_vector;
+        mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
 
         for (jj = 0; jj<jnum; jj++)  {          
           j =jlist[jj];
           j &= NEIGHMASK;
-          dx = x[i][0] - x[j][0];
-          dy = x[i][1] - x[j][1];
-          dz = x[i][2] - x[j][2];
-          rsq = dx*dx + dy*dy + dz*dz;
-          r = sqrt(rsq);
-          A = C*u/p4/r/rsq;
+          dx << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
+          r = dx.norm();
+          // r = sqrt(rsq);
+          A = C*u/p4/r/r/r;
           dx /= r;
-          dy /= r;
-          dz /= r;
           
-          mjr = mu[j][0]*dx+mu[j][1]*dy+mu[j][2]*dz;
-          
-          mu[i][0] += A*(3*mjr*dx-mu[j][0]);
-          mu[i][1] += A*(3*mjr*dy-mu[j][1]);
-          mu[i][2] += A*(3*mjr*dz-mu[j][2]);
+          Eigen::Vector3d mu_j_vector;
+          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
+
+          mjr = mu_j_vector.dot(dx);
+
+          mu_i_vector += A*(3*mjr*dx-mu_j_vector);
         }
 
-        mumu = mu[i][0]*mu[i][0]+mu[i][1]*mu[i][1]+mu[i][2]*mu[i][2];
+        mumu = mu_i_vector.dot(mu_i_vector);
 
         if (mumu > C*C*4){
           muR=sqrt(C*C*4/mumu);
-          mu[i][0]=mu[i][0]*muR;
-          mu[i][1]=mu[i][1]*muR;
-          mu[i][2]=mu[i][2]*muR;
+          mu[i][0]=mu_i_vector[0]*muR;
+          mu[i][1]=mu_i_vector[1]*muR;
+          mu[i][2]=mu_i_vector[2]*muR;
         }
       }
     }
@@ -298,30 +301,33 @@ void FixMagnetic::post_force(int vflag)
       if (mask[i] & groupbit) {
         jlist = firstneigh[i];
         jnum = numneigh[i];
+        Eigen::Vector3d mu_i_vector;
+        mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
           j &= NEIGHMASK;
-          dx = x[i][0] - x[j][0];
-          dy = x[i][1] - x[j][1];
-          dz = x[i][2] - x[j][2];
-          rsq = dx*dx + dy*dy + dz*dz;
-          r = sqrt(rsq);
+          Eigen::Vector3d mu_j_vector;
+          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
+          
+          dx << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
+          r = dx.norm();
+          rsq = r*r;
   
           //K = 3e-4/rsq/rsq;
           K = 3e-7/rsq/rsq;
   
           dx /= r;
-          dy /= r;
-          dz /= r;
 
-          mir = mu[i][0]*dx+mu[i][1]*dy+mu[i][2]*dz;
-          mjr = mu[j][0]*dx+mu[j][1]*dy+mu[j][2]*dz;
-          mumu = mu[i][0]*mu[j][0]+mu[i][1]*mu[j][1]+mu[i][2]*mu[j][2];
+          mir=mu_i_vector.dot(dx);
+          mjr=mu_j_vector.dot(dx);
+          mumu = mu_i_vector.dot(mu_j_vector);
 
-          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*dx);
-          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*dy);
-          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*dz);
+          std::cout<<(rsq);
+
+          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*dx[0]);
+          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*dx[1]);
+          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*dx[2]);
             
         }
       }

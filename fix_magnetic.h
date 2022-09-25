@@ -15,6 +15,7 @@ FixStyle(magnetic,FixMagnetic)
 #define LMP_FIX_MAGNETIC_H
 
 #include "fix.h"
+#include <eigen-3.4.0/Eigen/Dense>
 
 namespace LAMMPS_NS {
 
