@@ -224,23 +224,22 @@ void FixMagnetic::post_force(int vflag)
   //std::cout<<"made it this far"<<std::endl;
   int i,j,ii,jj,inum,jnum;
   int *ilist,*jlist,*numneigh,**firstneigh,*slist;
-  double rsq, r, mir, mjr, mumu, A, K, muR;
+  double sep_sq, sep, mir, mjr, mumu, A, K, muR, susc, susc_eff;
   double *rad = atom->radius;
   double **x = atom->x;
   double **mu = atom->mu;
   double **f = atom->f;
   double *q = atom->q;
   double p4 = M_PI*4;
-  double u = p4*1e-7; //for SI units changed by Anmol
+  double mu0 = p4*1e-7; //for SI units changed by Anmol
   //double u=1;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   int nghost = atom->nghost;
   int *type = atom->type;
   // reallocate hfield array if necessary
+  Eigen::Vector3d SEP;
 
-  Eigen::Vector3d dx;
-  
   if (varflag == ATOM && nlocal > maxatom) {
     maxatom = atom->nmax;
     memory->destroy(hfield);
@@ -256,9 +255,9 @@ void FixMagnetic::post_force(int vflag)
       i = ilist[ii];
 
       if (mask[i] & groupbit) {
-        double susc= susceptibility_[type[i]-1];
-        double susc_eff=3*susc/(susc+3);//3*(susc-1)/(susc+2);
-        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/u;
+        susc= susceptibility_[type[i]-1];
+        susc_eff=3*susc/(susc+3);//3*(susc-1)/(susc+2);
+        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/mu0;
         mu[i][0] = C*ex;
         mu[i][1] = C*ey;
         mu[i][2] = C*ez;
@@ -270,18 +269,18 @@ void FixMagnetic::post_force(int vflag)
         for (jj = 0; jj<jnum; jj++)  {          
           j =jlist[jj];
           j &= NEIGHMASK;
-          dx << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-          r = dx.norm();
+          SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
+          sep = SEP.norm();
           // r = sqrt(rsq);
-          A = C*u/p4/r/r/r;
-          dx /= r;
+          A = C*mu0/p4/sep/sep/sep;
+          // SEP /= sep;
           
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
 
-          mjr = mu_j_vector.dot(dx);
+          mjr = mu_j_vector.dot(SEP)/sep;
 
-          mu_i_vector += A*(3*mjr*dx-mu_j_vector);
+          mu_i_vector += A*(3*mjr*SEP/sep-mu_j_vector);
         }
 
         mumu = mu_i_vector.dot(mu_i_vector);
@@ -310,25 +309,141 @@ void FixMagnetic::post_force(int vflag)
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
           
-          dx << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-          r = dx.norm();
-          rsq = r*r;
+          SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
+          sep = SEP.norm();
+          sep_sq = sep*sep;
   
           //K = 3e-4/rsq/rsq;
-          K = 3e-7/rsq/rsq;
+          K = 3e-7/sep_sq/sep_sq;
   
-          dx /= r;
+          // dx /= r;
 
-          mir=mu_i_vector.dot(dx);
-          mjr=mu_j_vector.dot(dx);
+          mir=mu_i_vector.dot(SEP)/sep;
+          mjr=mu_j_vector.dot(SEP)/sep;
           mumu = mu_i_vector.dot(mu_j_vector);
 
-          std::cout<<(rsq);
-
-          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*dx[0]);
-          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*dx[1]);
-          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*dx[2]);
+          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP[0]/sep);
+          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP[1]/sep);
+          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP[2]/sep);
             
+        }
+      }
+    }
+    // Spherical Harmonics
+    for (ii = 0; ii < inum; ii++) {
+      i = ilist[ii];
+
+      if (mask[i] & groupbit) {
+        susc= susceptibility_[type[i]-1];
+        double mu_eff=(1+susc)*mu0;
+        susc_eff=3*susc/(susc+3);
+        int L=10; // choose L
+
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
+        Eigen::Vector3d mu_i_vector;
+        Eigen::VectorXd Beta1_0, Beta2_0, Beta1_1, Beta2_1;
+        mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+
+        for (jj = 0; jj<jnum; jj++)  {
+          j =jlist[jj];
+          j &= NEIGHMASK;
+          Eigen::Vector3d mu_j_vector;
+          
+          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
+          
+          SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
+          sep = SEP.norm();
+          if (sep/rad[i] < 4.2){
+            Eigen::Vector3d z_cap, x_cap, y_cap, H0;
+            H0<<ex, ey, ez;
+            
+            z_cap=SEP/sep;
+
+            x_cap=(H0-H0.dot(z_cap)*z_cap);
+            if (x_cap.norm()==0){
+              // how to define the axis in this case
+            }
+            else{
+              x_cap=x_cap/x_cap.norm();
+
+              y_cap=z_cap.cross(x_cap);
+
+            }
+            
+            double H_prll, H_perp;
+
+            H_prll=H0.dot(z_cap);
+            H_perp=H0.dot(x_cap);
+
+            std::cout<<"H parallel"<<H_prll<<std::endl;
+            std::cout<<"H perp"<<H_perp<<std::endl;
+
+              for (int m= 0; m < 2; m++){
+                Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
+                for (int m_i = 0; m_i < L; m_i++){
+                  for (int m_j = 0; m_j < L; m_j++){
+                    // X matrix
+                    if (m_i==m_j){
+                      X(m_i,m_j)=(m_i+1)*(mu_eff/mu0) + (m_i+1) + 1;
+                    }
+                  // Delta and Gamma matrix
+                  Delta_m(m_i,m_j)=std::pow((-1),((m_i+1)+m))*((m_i+1)*(mu_eff/mu0)-(m_i+1))*nchoosek(m_i+1+m_j+1, m_j+1-m)*std::pow(rad[i],(2*(m_i+1)+1))/std::pow(sep,(m_i+1+m_j+1+1));
+                  Gamma_m(m_i,m_j)=std::pow((-1), (m_i+1+m_j+1))*Delta_m(m_i,m_j);
+                  }   
+                }
+                // 2L X 2L Matrix
+                Eigen::MatrixXd Am(2*L, 2*L);
+                Am.block(0,0,L,L)=X;
+                Am.block(0,L,L,L)=Delta_m;
+                Am.block(L,0,L,L)=Gamma_m;
+                Am.block(L,L,L,L)=X;
+
+                //qm vector
+                Eigen::VectorXd qm(L);
+                if (m==0){
+                  qm(0)=-H_prll*std::pow(rad[i],3)*(1-mu_eff/mu0);
+                }
+                else if (m==1){
+                  qm(0)=H_perp*std::pow(rad[i],3)*(1-mu_eff/mu0);
+                }
+        
+                //2L Q vector
+                Eigen::VectorXd Qm(2*L);
+                Qm.block(0,0,L,1)=qm;
+                Qm.block(L,0,L,1)=qm;
+
+                //solve linear system
+                Eigen::VectorXd Beta_m(2*L);
+
+                Beta_m=Am.colPivHouseholderQr().solve(Qm);
+                if (m==0){
+                  Beta1_0=Beta_m.block(0,0,L,1);
+                  Beta2_0=Beta_m.block(L,0,L,1);
+                }
+                else if (m==1){
+                  Beta1_1=Beta_m.block(0,0,L,1);
+                  Beta2_1=Beta_m.block(L,0,L,1);
+                }
+              }
+            std::cout<< "Linear System Solved"<<std::endl;
+            
+            //adjust two-bosy dipole moments
+            double Beta_01_dip=  mu_i_vector.dot(z_cap)/(p4*rad[i]*rad[i]*rad[i]);
+            double Beta_11_dip= -mu_i_vector.dot(x_cap)/(p4*rad[i]*rad[i]*rad[i]);
+
+            //
+            Eigen::Vector3d mu_dipole = p4*rad[i]*rad[i]*rad[i]*susc_eff*H0/3;
+            double Beta_01_2Bdip = mu_dipole.dot(z_cap)/(p4*rad[i]*rad[i]*rad[i]);
+            double Beta_11_2Bdip = -mu_dipole.dot(x_cap)/(p4*rad[i]*rad[i]*rad[i]);
+
+            Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
+            Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
+            Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
+            Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
+
+            
+          }
         }
       }
     }
@@ -351,4 +466,17 @@ double FixMagnetic::memory_usage()
   double bytes = 0.0;
   if (varflag == ATOM) bytes = atom->nmax*3 * sizeof(double);
   return bytes;
+}
+
+double FixMagnetic::nchoosek(int n, int k){
+    if (k > n) return 0;
+    if (k * 2 > n) k = n-k;
+    if (k == 0) return 1;
+
+    int result = n;
+    for( int i = 2; i <= k; ++i ) {
+        result *= (n-i+1);
+        result /= i;
+    }
+    return result;
 }

@@ -38,7 +38,7 @@ class FixMagnetic : public Fix {
   int xvar,yvar,zvar,xstyle,ystyle,zstyle;
   int nlevels_respa;
   class NeighList *list;
-
+  double nchoosek(int n, int k);
   int maxatom;
   double **hfield;
 
