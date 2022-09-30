@@ -39,7 +39,7 @@
 #include "fix_magnetic.h"
 #include <eigen-3.4.0/Eigen/Dense>
 #include <iostream>
-
+#include "spherical_harmonics.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -312,7 +312,7 @@ void FixMagnetic::post_force(int vflag)
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
           sep_sq = sep*sep;
-  
+          
           //K = 3e-4/rsq/rsq;
           K = 3e-7/sep_sq/sep_sq;
   
@@ -335,14 +335,13 @@ void FixMagnetic::post_force(int vflag)
 
       if (mask[i] & groupbit) {
         susc= susceptibility_[type[i]-1];
-        double mu_eff=(1+susc)*mu0;
         susc_eff=3*susc/(susc+3);
-        int L=10; // choose L
-
+        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/mu0;
+        Eigen::Vector3d mu_i_dipole;
+        mu_i_dipole<<C*ex, C*ey, C*ez;
         jlist = firstneigh[i];
         jnum = numneigh[i];
         Eigen::Vector3d mu_i_vector;
-        Eigen::VectorXd Beta1_0, Beta2_0, Beta1_1, Beta2_1;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
 
         for (jj = 0; jj<jnum; jj++)  {
@@ -354,93 +353,24 @@ void FixMagnetic::post_force(int vflag)
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
+          // r = sqrt(rsq);
+          A = C*mu0/p4/sep/sep/sep;
+          double mr = mu_i_dipole.dot(SEP)/sep;
+          K = 3e-7/sep_sq/sep_sq;
+
+          double mumu_d=mu_i_dipole.dot(mu_i_dipole);
+
           if (sep/rad[i] < 4.2){
-            Eigen::Vector3d z_cap, x_cap, y_cap, H0;
+            Eigen::Vector3d H0;
             H0<<ex, ey, ez;
             
-            z_cap=SEP/sep;
-
-            x_cap=(H0-H0.dot(z_cap)*z_cap);
-            if (x_cap.norm()==0){
-              // how to define the axis in this case
-            }
-            else{
-              x_cap=x_cap/x_cap.norm();
-
-              y_cap=z_cap.cross(x_cap);
-
-            }
+            spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector);
             
-            double H_prll, H_perp;
+            Eigen::Vector3d F_2B=particle_i_j.get_force();
 
-            H_prll=H0.dot(z_cap);
-            H_perp=H0.dot(x_cap);
-
-            std::cout<<"H parallel"<<H_prll<<std::endl;
-            std::cout<<"H perp"<<H_perp<<std::endl;
-
-              for (int m= 0; m < 2; m++){
-                Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
-                for (int m_i = 0; m_i < L; m_i++){
-                  for (int m_j = 0; m_j < L; m_j++){
-                    // X matrix
-                    if (m_i==m_j){
-                      X(m_i,m_j)=(m_i+1)*(mu_eff/mu0) + (m_i+1) + 1;
-                    }
-                  // Delta and Gamma matrix
-                  Delta_m(m_i,m_j)=std::pow((-1),((m_i+1)+m))*((m_i+1)*(mu_eff/mu0)-(m_i+1))*nchoosek(m_i+1+m_j+1, m_j+1-m)*std::pow(rad[i],(2*(m_i+1)+1))/std::pow(sep,(m_i+1+m_j+1+1));
-                  Gamma_m(m_i,m_j)=std::pow((-1), (m_i+1+m_j+1))*Delta_m(m_i,m_j);
-                  }   
-                }
-                // 2L X 2L Matrix
-                Eigen::MatrixXd Am(2*L, 2*L);
-                Am.block(0,0,L,L)=X;
-                Am.block(0,L,L,L)=Delta_m;
-                Am.block(L,0,L,L)=Gamma_m;
-                Am.block(L,L,L,L)=X;
-
-                //qm vector
-                Eigen::VectorXd qm(L);
-                if (m==0){
-                  qm(0)=-H_prll*std::pow(rad[i],3)*(1-mu_eff/mu0);
-                }
-                else if (m==1){
-                  qm(0)=H_perp*std::pow(rad[i],3)*(1-mu_eff/mu0);
-                }
-        
-                //2L Q vector
-                Eigen::VectorXd Qm(2*L);
-                Qm.block(0,0,L,1)=qm;
-                Qm.block(L,0,L,1)=qm;
-
-                //solve linear system
-                Eigen::VectorXd Beta_m(2*L);
-
-                Beta_m=Am.colPivHouseholderQr().solve(Qm);
-                if (m==0){
-                  Beta1_0=Beta_m.block(0,0,L,1);
-                  Beta2_0=Beta_m.block(L,0,L,1);
-                }
-                else if (m==1){
-                  Beta1_1=Beta_m.block(0,0,L,1);
-                  Beta2_1=Beta_m.block(L,0,L,1);
-                }
-              }
-            std::cout<< "Linear System Solved"<<std::endl;
-            
-            //adjust two-bosy dipole moments
-            double Beta_01_dip=  mu_i_vector.dot(z_cap)/(p4*rad[i]*rad[i]*rad[i]);
-            double Beta_11_dip= -mu_i_vector.dot(x_cap)/(p4*rad[i]*rad[i]*rad[i]);
-
-            //
-            Eigen::Vector3d mu_dipole = p4*rad[i]*rad[i]*rad[i]*susc_eff*H0/3;
-            double Beta_01_2Bdip = mu_dipole.dot(z_cap)/(p4*rad[i]*rad[i]*rad[i]);
-            double Beta_11_2Bdip = -mu_dipole.dot(x_cap)/(p4*rad[i]*rad[i]*rad[i]);
-
-            Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
-            Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
-            Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
-            Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
+            f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
+            f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
+            f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
 
             
           }
