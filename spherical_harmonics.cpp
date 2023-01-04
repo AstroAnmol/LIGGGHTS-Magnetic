@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cmath>
-#include "spherical_harmonics.h"
+#include "spherical_harmonics.h" 
 #include <eigen-3.4.0/Eigen/Dense>
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
@@ -8,7 +8,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // variable assignment
     a=radius;
     susc=susceptibilty;
-    H0=H0_vec;
+    H0=H0_vec*mu0;
     SEP=SEP_vec;
     M_i=M_i_vec;
 
@@ -37,6 +37,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
+    std::cout<<H_prll<< H_perp<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
@@ -86,9 +87,11 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
             Beta2_1=Beta_m.block(L,0,L,1);
         }
     };
+
+    std::cout<<Beta1_0<< Beta1_1<<std::endl;
     // std::cout<< "Linear System Solved"<<std::endl;
     
-    //adjust two-bosy dipole moments
+    //adjust two-body dipole moments
     double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
     double Beta_11_dip= -M_i.dot(x_cap)/(4*M_PI*a*a*a);
 

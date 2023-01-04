@@ -282,6 +282,9 @@ void FixMagnetic::post_force(int vflag)
 
           mu_i_vector += A*(3*mjr*SEP/sep-mu_j_vector);
         }
+        mu[i][0]=mu_i_vector[0];
+        mu[i][1]=mu_i_vector[1];
+        mu[i][2]=mu_i_vector[2];
 
         mumu = mu_i_vector.dot(mu_i_vector);
 
@@ -364,15 +367,22 @@ void FixMagnetic::post_force(int vflag)
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
             
-            spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector);
+            // spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector);
             
-            Eigen::Vector3d F_2B=particle_i_j.get_force();
+            Eigen::Vector3d F_2B;
+            if (i==1){
+              F_2B<<0,0,-1.32303550148865e-13;//particle_i_j.get_force();
+            }
+            else if (i==2)
+            {
+              F_2B<<0,0,1.32303550148865e-13;//particle_i_j.get_force();
+            }
+            
 
             f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
             f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
             f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
 
-            
           }
         }
       }
