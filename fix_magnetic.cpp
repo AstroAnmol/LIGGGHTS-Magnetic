@@ -250,6 +250,8 @@ void FixMagnetic::post_force(int vflag)
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
 
+  std::cout<<inum<<std::endl;
+  
   if (varflag == CONSTANT) {
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -367,16 +369,17 @@ void FixMagnetic::post_force(int vflag)
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
             
-            // spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector);
+            spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector);
             
             Eigen::Vector3d F_2B;
-            if (i==1){
-              F_2B<<0,0,-1.32303550148865e-13;//particle_i_j.get_force();
-            }
-            else if (i==2)
-            {
-              F_2B<<0,0,1.32303550148865e-13;//particle_i_j.get_force();
-            }
+            F_2B=particle_i_j.get_force();
+            // if (i==0){
+            //   F_2B<<0,0,-1.32303550148865e-13;//particle_i_j.get_force();
+            // }
+            // else if (i==1)
+            // {
+            //   F_2B<<0,0,1.32303550148865e-13;//particle_i_j.get_force();
+            // }
             
 
             f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);

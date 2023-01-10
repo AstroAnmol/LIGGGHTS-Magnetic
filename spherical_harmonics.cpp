@@ -8,7 +8,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // variable assignment
     a=radius;
     susc=susceptibilty;
-    H0=H0_vec*mu0;
+    H0=H0_vec/mu0;
     SEP=SEP_vec;
     M_i=M_i_vec;
 
@@ -37,7 +37,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
-    std::cout<<H_prll<< H_perp<<std::endl;
+    std::cout<<"Mag_parallel"<<H_prll<<std::endl;
+    std::cout<<"Mag_perp"<<H_perp<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
@@ -88,7 +89,11 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         }
     };
 
-    std::cout<<Beta1_0<< Beta1_1<<std::endl;
+    std::cout<<"Beta1_0"<<Beta1_0<< std::endl;
+    std::cout<<"Beta2_0"<<Beta2_0<<std::endl;
+
+    std::cout<<"Beta1_1"<<Beta1_1<< std::endl;
+    std::cout<<"Beta2_1"<<Beta2_1<<std::endl;
     // std::cout<< "Linear System Solved"<<std::endl;
     
     //adjust two-body dipole moments
