@@ -5,6 +5,7 @@
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec){
+    std::cout<<"Spherical harmonics started"<<std::endl<<std::endl;
     // variable assignment
     a=radius;
     susc=susceptibilty;
@@ -37,8 +38,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
-    std::cout<<"Mag_parallel"<<H_prll<<std::endl;
-    std::cout<<"Mag_perp"<<H_perp<<std::endl;
+    std::cout<<"Mag_parallel: "<<H_prll<<std::endl;
+    std::cout<<"Mag_perp: "<<H_perp<<std::endl<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
@@ -89,11 +90,11 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         }
     };
 
-    std::cout<<"Beta1_0"<<Beta1_0<< std::endl;
-    std::cout<<"Beta2_0"<<Beta2_0<<std::endl;
+    std::cout<<"Beta1_0: "<<std::endl<<Beta1_0<< std::endl;
+    std::cout<<"Beta2_0: "<<std::endl<<Beta2_0<<std::endl;
 
-    std::cout<<"Beta1_1"<<Beta1_1<< std::endl;
-    std::cout<<"Beta2_1"<<Beta2_1<<std::endl;
+    std::cout<<"Beta1_1: "<<std::endl<<Beta1_1<< std::endl;
+    std::cout<<"Beta2_1: "<<std::endl<<Beta2_1<<std::endl<<std::endl;
     // std::cout<< "Linear System Solved"<<std::endl;
     
     //adjust two-body dipole moments
@@ -105,10 +106,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
     double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
 
-    Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
-    Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
-    Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
-    Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
+    //Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
+    //Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
+    //Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
+    //Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
 
     // Create a 3D spherical mesh
     int N =180;
@@ -192,7 +193,7 @@ Eigen::Vector3d spherical_harmonics::mag_field(double r, double theta, double ph
             double Plm=lpmn_cos(m, l, theta);
             double dPlm=d_lpmn_cos(m, l, theta);
             double r_pow_l2=std::pow(r, l+2);
-            // std::cout<<"Hrs"<<Hrs<<"Hths"<<Hths<<std::endl;
+            // std::cout<<"Hrs "<<Hrs<<", Hths"<<Hths<<std::endl;
             if (m==0){
                 // R component
                 Hr=Hr + (((l+1)*Beta1_0[l-1]*(Plm/r_pow_l2) -  Beta2_0[l-1]*Hrs)*std::cos(m*phi));
@@ -227,7 +228,7 @@ Eigen::Vector3d spherical_harmonics::integrand(double th, double ph){
     H0_sph=post*H0;
     H_sph= mag_field(a, th, ph) + H0_sph;
     H_cart=pre*H_sph;
-    H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
+    //H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
     double h=H_cart.norm();
     T_cart=mu0*(H_cart*H_cart.transpose() - 0.5*(h*h)*Eigen::Matrix3d::Identity());
     rn_hat<<std::sin(th)*std::cos(ph),std::sin(th)*std::sin(ph),std::cos(th);
