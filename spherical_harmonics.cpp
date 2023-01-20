@@ -32,6 +32,9 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         y_cap=z_cap.cross(x_cap);
 
     }
+    std::cout<<"x_cap"<<x_cap.transpose()<<std::endl<<std::endl;
+    std::cout<<"y_cap"<<y_cap.transpose()<<std::endl<<std::endl;
+    std::cout<<"z_cap"<<z_cap.transpose()<<std::endl<<std::endl;
 
     double H_prll, H_perp;
 
@@ -143,6 +146,13 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     F=F*dang*dang/9.0;
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
+
+    std::cout<<"F"<<F<<std::endl<<std::endl;
+    std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
+
+    std::cout<<"lpmn"<<lpmn_cos(0,1,45)<<std::endl<<std::endl;
+    std::cout<<"d_lpmn"<<d_lpmn_cos(0,1,45)<<std::endl<<std::endl;
+    
 }
 
 Eigen::Vector3d spherical_harmonics::get_force(){

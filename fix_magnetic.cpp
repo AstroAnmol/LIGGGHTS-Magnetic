@@ -348,6 +348,7 @@ void FixMagnetic::post_force(int vflag)
         jnum = numneigh[i];
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+        std::cout<<"jlist"<<jnum<<std::endl<<std::endl;
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
