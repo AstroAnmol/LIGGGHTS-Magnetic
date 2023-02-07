@@ -25,6 +25,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
     if (x_cap.norm()==0){
       // how to define the axis in this case
+        x_cap<<z_cap[2], 0, -z_cap[0];
+        y_cap=z_cap.cross(x_cap);
     }
     else{
         x_cap=x_cap/x_cap.norm();
@@ -67,6 +69,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
         //qm vector
         Eigen::VectorXd qm(L);
+        qm=Eigen::VectorXd::Zero(L);
         if (m==0){
             qm(0)=-H_prll*std::pow(a,3)*(1-mu/mu0);
         }
@@ -78,6 +81,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Eigen::VectorXd Qm(2*L);
         Qm.block(0,0,L,1)=qm;
         Qm.block(L,0,L,1)=qm;
+        std::cout<<"m"<<m<<std::endl;
+        std::cout<<"qm"<<qm<<std::endl<<std::endl;
 
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
@@ -109,10 +114,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
     double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
 
-    //Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
-    //Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
-    //Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
-    //Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
+    Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
+    Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
+    Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
+    Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
 
     // Create a 3D spherical mesh
     int N =180;
@@ -238,7 +243,7 @@ Eigen::Vector3d spherical_harmonics::integrand(double th, double ph){
     H0_sph=post*H0;
     H_sph= mag_field(a, th, ph) + H0_sph;
     H_cart=pre*H_sph;
-    //H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
+    H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
     double h=H_cart.norm();
     T_cart=mu0*(H_cart*H_cart.transpose() - 0.5*(h*h)*Eigen::Matrix3d::Identity());
     rn_hat<<std::sin(th)*std::cos(ph),std::sin(th)*std::sin(ph),std::cos(th);
