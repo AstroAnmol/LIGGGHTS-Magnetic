@@ -98,11 +98,11 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         }
     };
 
-    std::cout<<"Beta1_0: "<<std::endl<<Beta1_0<< std::endl;
-    std::cout<<"Beta2_0: "<<std::endl<<Beta2_0<<std::endl;
+    // std::cout<<"Beta1_0: "<<std::endl<<Beta1_0<< std::endl;
+    // std::cout<<"Beta2_0: "<<std::endl<<Beta2_0<<std::endl;
 
-    std::cout<<"Beta1_1: "<<std::endl<<Beta1_1<< std::endl;
-    std::cout<<"Beta2_1: "<<std::endl<<Beta2_1<<std::endl<<std::endl;
+    // std::cout<<"Beta1_1: "<<std::endl<<Beta1_1<< std::endl;
+    // std::cout<<"Beta2_1: "<<std::endl<<Beta2_1<<std::endl<<std::endl;
     // std::cout<< "Linear System Solved"<<std::endl;
     
     //adjust two-body dipole moments
@@ -155,8 +155,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     std::cout<<"F"<<F<<std::endl<<std::endl;
     std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
 
-    std::cout<<"lpmn"<<lpmn_cos(0,1,45)<<std::endl<<std::endl;
-    std::cout<<"d_lpmn"<<d_lpmn_cos(0,1,45)<<std::endl<<std::endl;
+    // std::cout<<"lpmn"<<lpmn_cos(0,1,45)<<std::endl<<std::endl;
+    // std::cout<<"d_lpmn"<<d_lpmn_cos(0,1,45)<<std::endl<<std::endl;
     
 }
 
