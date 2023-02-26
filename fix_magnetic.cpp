@@ -250,7 +250,7 @@ void FixMagnetic::post_force(int vflag)
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
 
-  std::cout<<inum<<std::endl;
+  // std::cout<<inum<<std::endl;
   
   if (varflag == CONSTANT) {
     for (ii = 0; ii < inum; ii++) {
@@ -348,13 +348,13 @@ void FixMagnetic::post_force(int vflag)
         jnum = numneigh[i];
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
-        std::cout<<"jlist"<<jnum<<std::endl<<std::endl;
+        // std::cout<<"jlist"<<jnum<<std::endl<<std::endl;
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
           j &= NEIGHMASK;
           Eigen::Vector3d mu_j_vector;
-          std::cout<<"i: "<<i<<"j: "<<j<<std::endl<<std::endl;
+          // std::cout<<"i: "<<i<<"j: "<<j<<std::endl<<std::endl;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
@@ -382,10 +382,10 @@ void FixMagnetic::post_force(int vflag)
             //   F_2B<<0,0,1.32303550148865e-13;//particle_i_j.get_force();
             // }
             
-
-            f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
-            f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
-            f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
+            // add the spherical harmonics component and subtract the far-field affect (something wrong with this)
+            f[i][0] += F_2B[0] ;//- K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
+            f[i][1] += F_2B[1] ;//- K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
+            f[i][2] += F_2B[2] ;//- K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
 
           }
         }

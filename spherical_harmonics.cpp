@@ -5,7 +5,7 @@
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec){
-    std::cout<<"Spherical harmonics started"<<std::endl<<std::endl;
+    // std::cout<<"Spherical harmonics started"<<std::endl<<std::endl;
     // variable assignment
     a=radius;
     susc=susceptibilty;
@@ -34,17 +34,17 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         y_cap=z_cap.cross(x_cap);
 
     }
-    std::cout<<"x_cap"<<x_cap.transpose()<<std::endl<<std::endl;
-    std::cout<<"y_cap"<<y_cap.transpose()<<std::endl<<std::endl;
-    std::cout<<"z_cap"<<z_cap.transpose()<<std::endl<<std::endl;
+    // std::cout<<"x_cap"<<x_cap.transpose()<<std::endl<<std::endl;
+    // std::cout<<"y_cap"<<y_cap.transpose()<<std::endl<<std::endl;
+    // std::cout<<"z_cap"<<z_cap.transpose()<<std::endl<<std::endl;
 
     double H_prll, H_perp;
 
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
-    std::cout<<"Mag_parallel: "<<H_prll<<std::endl;
-    std::cout<<"Mag_perp: "<<H_perp<<std::endl<<std::endl;
+    // std::cout<<"Mag_parallel: "<<H_prll<<std::endl;
+    // std::cout<<"Mag_perp: "<<H_perp<<std::endl<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
@@ -81,8 +81,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Eigen::VectorXd Qm(2*L);
         Qm.block(0,0,L,1)=qm;
         Qm.block(L,0,L,1)=qm;
-        std::cout<<"m"<<m<<std::endl;
-        std::cout<<"qm"<<qm<<std::endl<<std::endl;
+        // std::cout<<"m"<<m<<std::endl;
+        // std::cout<<"qm"<<qm<<std::endl<<std::endl;
 
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
@@ -152,8 +152,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
 
-    std::cout<<"F"<<F<<std::endl<<std::endl;
-    std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
+    // std::cout<<"F"<<F<<std::endl<<std::endl;
+    // std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
 
     // std::cout<<"lpmn"<<lpmn_cos(0,1,45)<<std::endl<<std::endl;
     // std::cout<<"d_lpmn"<<d_lpmn_cos(0,1,45)<<std::endl<<std::endl;
@@ -243,6 +243,7 @@ Eigen::Vector3d spherical_harmonics::integrand(double th, double ph){
     H0_sph=post*H0;
     H_sph= mag_field(a, th, ph) + H0_sph;
     H_cart=pre*H_sph;
+    //change the magnetic field for far field affects (is it correct)
     H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
     double h=H_cart.norm();
     T_cart=mu0*(H_cart*H_cart.transpose() - 0.5*(h*h)*Eigen::Matrix3d::Identity());
