@@ -259,7 +259,7 @@ void FixMagnetic::post_force(int vflag)
       if (mask[i] & groupbit) {
         susc= susceptibility_[type[i]-1];
         susc_eff=3*susc/(susc+3);//3*(susc-1)/(susc+2);
-        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/mu0;
+        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3;
         mu[i][0] = C*ex;
         mu[i][1] = C*ey;
         mu[i][2] = C*ez;
@@ -268,13 +268,13 @@ void FixMagnetic::post_force(int vflag)
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
 
-        for (jj = 0; jj<jnum; jj++)  {          
+        for (jj = 0; jj<jnum; jj++){          
           j =jlist[jj];
           j &= NEIGHMASK;
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
           // r = sqrt(rsq);
-          A = C*mu0/p4/sep/sep/sep;
+          A = C/p4/sep/sep/sep;
           // SEP /= sep;
           
           Eigen::Vector3d mu_j_vector;
@@ -341,7 +341,7 @@ void FixMagnetic::post_force(int vflag)
       if (mask[i] & groupbit) {
         susc= susceptibility_[type[i]-1];
         susc_eff=3*susc/(susc+3);
-        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3/mu0;
+        double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3;
         Eigen::Vector3d mu_i_dipole;
         mu_i_dipole<<C*ex, C*ey, C*ez;
         jlist = firstneigh[i];
@@ -360,7 +360,7 @@ void FixMagnetic::post_force(int vflag)
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
           // r = sqrt(rsq);
-          A = C*mu0/p4/sep/sep/sep;
+          A = C/p4/sep/sep/sep;
           double mr = mu_i_dipole.dot(SEP)/sep;
           K = 3e-7/sep_sq/sep_sq;
 

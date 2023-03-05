@@ -9,7 +9,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // variable assignment
     a=radius;
     susc=susceptibilty;
-    H0=H0_vec/mu0;
+    H0=H0_vec;
     SEP=SEP_vec;
     M_i=M_i_vec;
 
