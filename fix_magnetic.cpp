@@ -383,9 +383,9 @@ void FixMagnetic::post_force(int vflag)
             // }
             
             // add the spherical harmonics component and subtract the far-field affect (something wrong with this)
-            f[i][0] += F_2B[0] ;//- K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
-            f[i][1] += F_2B[1] ;//- K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
-            f[i][2] += F_2B[2] ;//- K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
+            f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
+            f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
+            f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
 
           }
         }
