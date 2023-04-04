@@ -16,7 +16,7 @@ class spherical_harmonics{
         Eigen::Vector3d SEP;
         Eigen::Vector3d z_cap, x_cap, y_cap;
         Eigen::VectorXd Beta1_0, Beta2_0, Beta1_1, Beta2_1;
-        Eigen::Vector3d M_i, M_dipole;
+        Eigen::Vector3d M_i, M_dipole, M_j;
         Eigen::Vector3d F;
         Eigen::Vector3d F_act_coord;
         //functions
@@ -24,7 +24,7 @@ class spherical_harmonics{
         double lpmn_cos(int n, int m, double theta);
         double d_lpmn_cos(int n, int m, double theta);
     public:
-        spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec); // array for magnetic force parameters [a, susc]
+        spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec); // array for magnetic force parameters [a, susc]
         Eigen::Vector3d integrand(double th, double ph);
         Eigen::Vector3d mag_field(double r, double theta, double phi);
         Eigen::Vector3d get_force();

@@ -361,31 +361,35 @@ void FixMagnetic::post_force(int vflag)
           sep = SEP.norm();
           // r = sqrt(rsq);
           A = C/p4/sep/sep/sep;
-          double mr = mu_i_dipole.dot(SEP)/sep;
           K = 3e-7/sep_sq/sep_sq;
+          
+
+          double mr = mu_i_dipole.dot(SEP)/sep;
+          double mir = mu_i_vector.dot(SEP)/sep;
+          double mjr = mu_i_vector.dot(SEP)/sep;
 
           double mumu_d=mu_i_dipole.dot(mu_i_dipole);
+          double mumu=mu_i_vector.dot(mu_j_vector);
 
           if (sep/rad[i] < 4.2){
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
             
-            spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector);
+            spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector,mu_j_vector);
             
             Eigen::Vector3d F_2B;
             F_2B=particle_i_j.get_force_actual_coord();
-            // if (i==0){
-            //   F_2B<<0,0,-1.32303550148865e-13;//particle_i_j.get_force();
-            // }
-            // else if (i==1)
-            // {
-            //   F_2B<<0,0,1.32303550148865e-13;//particle_i_j.get_force();
-            // }
+
+
+            // add the spherical harmonics component and subtract the far-field affect (MDM)
+            f[i][0] += F_2B[0] - K*(mjr*mu_i_vector[0]+mir*mu_j_vector[0]+(mumu-5*mir*mjr)*SEP[0]/sep);
+            f[i][1] += F_2B[1] - K*(mjr*mu_i_vector[1]+mir*mu_j_vector[1]+(mumu-5*mir*mjr)*SEP[1]/sep);
+            f[i][2] += F_2B[2] - K*(mjr*mu_i_vector[2]+mir*mu_j_vector[2]+(mumu-5*mir*mjr)*SEP[2]/sep);
             
-            // add the spherical harmonics component and subtract the far-field affect (something wrong with this)
-            f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
-            f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
-            f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
+            // add the spherical harmonics component and subtract the far-field affect (FDM)
+            // f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
+            // f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
+            // f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
 
           }
         }

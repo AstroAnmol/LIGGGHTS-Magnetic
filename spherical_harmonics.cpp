@@ -4,7 +4,7 @@
 #include <eigen-3.4.0/Eigen/Dense>
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
-spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec){
+spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
     // std::cout<<"Spherical harmonics started"<<std::endl<<std::endl;
     // variable assignment
     a=radius;
@@ -12,8 +12,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H0=H0_vec;
     SEP=SEP_vec;
     M_i=M_i_vec;
+    M_j=M_j_vec;
 
-    L=10; //choose option later
+
+    L=20; //choose option later
     double mu=(1+susc)*mu0;
     susc_eff=3*susc/(susc+3);
     sep = SEP.norm();
@@ -98,21 +100,35 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         }
     };
 
-    // std::cout<<"Beta1_0: "<<std::endl<<Beta1_0<< std::endl;
-    // std::cout<<"Beta2_0: "<<std::endl<<Beta2_0<<std::endl;
-
-    // std::cout<<"Beta1_1: "<<std::endl<<Beta1_1<< std::endl;
-    // std::cout<<"Beta2_1: "<<std::endl<<Beta2_1<<std::endl<<std::endl;
-    // std::cout<< "Linear System Solved"<<std::endl;
-    
     //adjust two-body dipole moments
     double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
     double Beta_11_dip= -M_i.dot(x_cap)/(4*M_PI*a*a*a);
 
-    //
-    M_dipole = 4*M_PI*a*a*a*susc_eff*H0/3;
-    double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
-    double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
+    Eigen::MatrixXd A0(2, 2), A1(2, 2);
+
+    A0<<    mu/mu0 + 2 , (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),
+            (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
+
+    A1<<    mu/mu0 + 2 , (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),
+            (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
+    
+    double Beta_01_2Bdip, Beta_02_2Bdip, Beta_11_2Bdip, Beta_12_2Bdip;
+    
+    Eigen::Vector2d Q0, Q1, Beta_0_2Bdip, Beta_1_2Bdip;
+    Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
+    Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
+
+    Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
+    Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
+
+    Beta_01_2Bdip=Beta_0_2Bdip(0);
+    Beta_02_2Bdip=Beta_0_2Bdip(1);
+    Beta_11_2Bdip=Beta_1_2Bdip(0);
+    Beta_12_2Bdip=Beta_1_2Bdip(1);
+
+    // M_dipole = 4*M_PI*a*a*a*susc_eff*H0/3;
+    // double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
+    // double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
 
     Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
     Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
