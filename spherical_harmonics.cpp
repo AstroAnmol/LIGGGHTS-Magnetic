@@ -1,11 +1,16 @@
 #include <iostream>
 #include <cmath>
+#include <fstream>
 #include "spherical_harmonics.h" 
 #include <eigen-3.4.0/Eigen/Dense>
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
-    // std::cout<<"Spherical harmonics started"<<std::endl<<std::endl;
+    std::ofstream myfile;
+    myfile.open("print_file.txt", std::ios::out | std::ios::app | std::ios::binary);
+    // myfile<<"------------------------------------------ \n";
+    // myfile<<"Spherical Harmonics Calculation Started \n";
+    // myfile<<"------------------------------------------ \n";
     // variable assignment
     a=radius;
     susc=susceptibilty;
@@ -15,7 +20,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     M_j=M_j_vec;
 
 
-    L=20; //choose option later
+    L=10; //choose option later
     double mu=(1+susc)*mu0;
     susc_eff=3*susc/(susc+3);
     sep = SEP.norm();
@@ -53,10 +58,12 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         for (int i = 0; i < L; i++){
             for (int j = 0; j < L; j++){
                 // X matrix
-                if (i==j)
-                {
+                if (i==j){   
                     X(i,j)=(i+1)*(mu/mu0) + (i+1) + 1;
+                    // std::cout<<X(i,j)<<std::endl;
                 }
+                else{   X(i,j)=0;}
+                
                 // Delta and Gamma matrix
                 Delta_m(i,j)=std::pow((-1),((i+1)+m))*((i+1)*(mu/mu0)-(i+1))*nchoosek(i+1+j+1, j+1-m)*std::pow(a,(2*(i+1)+1))/std::pow(sep,(i+1+j+1+1));
                 Gamma_m(i,j)=std::pow((-1), (i+1+j+1))*Delta_m(i,j);
@@ -68,6 +75,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Am.block(0,L,L,L)=Delta_m;
         Am.block(L,0,L,L)=Gamma_m;
         Am.block(L,L,L,L)=X;
+
+        // std::cout<<X<<std::endl;
 
         //qm vector
         Eigen::VectorXd qm(L);
@@ -100,40 +109,54 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         }
     };
 
-    //adjust two-body dipole moments
-    double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
-    double Beta_11_dip= -M_i.dot(x_cap)/(4*M_PI*a*a*a);
-
-    Eigen::MatrixXd A0(2, 2), A1(2, 2);
-
-    A0<<    mu/mu0 + 2 , (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),
-            (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
-
-    A1<<    mu/mu0 + 2 , (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),
-            (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
     
-    double Beta_01_2Bdip, Beta_02_2Bdip, Beta_11_2Bdip, Beta_12_2Bdip;
+    // std::cout<<"PRINTING BETA"<<std::endl;
+    // std::cout<<Beta1_0<<std::endl<<std::endl;
+    // std::cout<<Beta2_0<<std::endl<<std::endl;
+    // std::cout<<Beta1_1<<std::endl<<std::endl;
+    // std::cout<<Beta2_1<<std::endl<<std::endl;
+
+    // //adjust two-body dipole moments
+    // double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
+    // double Beta_11_dip= -M_i.dot(x_cap)/(4*M_PI*a*a*a);
+
+    // double Beta_02_dip=  M_j.dot(z_cap)/(4*M_PI*a*a*a);
+    // double Beta_12_dip= -M_j.dot(x_cap)/(4*M_PI*a*a*a);
+
+    // Eigen::MatrixXd A0(2, 2), A1(2, 2);
+
+    // A0<<    mu/mu0 + 2 , (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),
+    //         (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
+
+    // A1<<    mu/mu0 + 2 , (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),
+    //         (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
     
-    Eigen::Vector2d Q0, Q1, Beta_0_2Bdip, Beta_1_2Bdip;
-    Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
-    Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
+    // double Beta_01_2Bdip, Beta_02_2Bdip, Beta_11_2Bdip, Beta_12_2Bdip;
+    
+    // Eigen::Vector2d Q0, Q1, Beta_0_2Bdip, Beta_1_2Bdip;
+    // Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
+    // Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
 
-    Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
-    Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
+    // Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
+    // Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
 
-    Beta_01_2Bdip=Beta_0_2Bdip(0);
-    Beta_02_2Bdip=Beta_0_2Bdip(1);
-    Beta_11_2Bdip=Beta_1_2Bdip(0);
-    Beta_12_2Bdip=Beta_1_2Bdip(1);
+    // Beta_01_2Bdip=Beta_0_2Bdip(0);
+    // Beta_02_2Bdip=Beta_0_2Bdip(1);
+    // Beta_11_2Bdip=Beta_1_2Bdip(0);
+    // Beta_12_2Bdip=Beta_1_2Bdip(1);
 
-    // M_dipole = 4*M_PI*a*a*a*susc_eff*H0/3;
-    // double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
-    // double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
+    // // M_dipole = 4*M_PI*a*a*a*susc_eff*H0/3;
+    // // double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
+    // // double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
 
-    Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
-    Beta2_0[0]=Beta2_0[0] + Beta_01_dip - Beta_01_2Bdip;
-    Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
-    Beta2_1[0]=Beta2_1[0] + Beta_11_dip - Beta_11_2Bdip;
+    // myfile<<"PRINTING BETA CORRECTIONS \n";
+    // myfile<<Beta_01_dip<<", "<<Beta_11_dip<<", "<<Beta_02_dip<<", "<<Beta_12_dip<<"\n";
+    // myfile<<Beta_01_2Bdip<<", "<<Beta_11_2Bdip<<", "<<Beta_02_2Bdip<<", "<<Beta_12_2Bdip<<"\n";
+
+    // Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
+    // Beta2_0[0]=Beta2_0[0] + Beta_02_dip - Beta_02_2Bdip;
+    // Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
+    // Beta2_1[0]=Beta2_1[0] + Beta_12_dip - Beta_12_2Bdip;
 
     // Create a 3D spherical mesh
     int N =180;
@@ -171,9 +194,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // std::cout<<"F"<<F<<std::endl<<std::endl;
     // std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
 
-    // std::cout<<"lpmn"<<lpmn_cos(0,1,45)<<std::endl<<std::endl;
-    // std::cout<<"d_lpmn"<<d_lpmn_cos(0,1,45)<<std::endl<<std::endl;
-    
+    // myfile<<"------------------------------------------ \n";
+    // myfile<<"Spherical Harmonics Calculation Ended \n";
+    // myfile<<"------------------------------------------ \n";
+    myfile.close();
 }
 
 Eigen::Vector3d spherical_harmonics::get_force(){
@@ -260,7 +284,7 @@ Eigen::Vector3d spherical_harmonics::integrand(double th, double ph){
     H_sph= mag_field(a, th, ph) + H0_sph;
     H_cart=pre*H_sph;
     //change the magnetic field for far field affects (is it correct)
-    H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
+    // H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
     double h=H_cart.norm();
     T_cart=mu0*(H_cart*H_cart.transpose() - 0.5*(h*h)*Eigen::Matrix3d::Identity());
     rn_hat<<std::sin(th)*std::cos(ph),std::sin(th)*std::sin(ph),std::cos(th);
