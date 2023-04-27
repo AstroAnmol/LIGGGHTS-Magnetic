@@ -388,11 +388,11 @@ void FixMagnetic::post_force(int vflag)
           K = 3e-7/sep_sq/sep_sq;
           
 
-          // // double mr = mu_i_dipole.dot(SEP)/sep;
-          // double mir = mu_i_vector.dot(SEP)/sep;
-          // double mjr = mu_j_vector.dot(SEP)/sep;
+          double mr = mu_i_dipole.dot(SEP)/sep;
+          double mir = mu_i_vector.dot(SEP)/sep;
+          double mjr = mu_j_vector.dot(SEP)/sep;
 
-          // // double mumu_d=mu_i_dipole.dot(mu_i_dipole);
+          double mumu_d=mu_i_dipole.dot(mu_i_dipole);
           // double mumu=mu_i_vector.dot(mu_j_vector);
 
           if (sep/rad[i] < 1000){
@@ -410,7 +410,7 @@ void FixMagnetic::post_force(int vflag)
             myfile<<"Force from 2B \n";
             myfile<<F_2B.transpose()<<"\n";
             
-            Eigen::Vector3d F_dip2B;
+            Eigen::Vector3d F_dip2B, F_dip2B_FDM;
             
             mir=mu_i_vector.dot(SEP)/sep;
             mjr=mu_j_vector.dot(SEP)/sep;
@@ -434,10 +434,14 @@ void FixMagnetic::post_force(int vflag)
 
             myfile<<"Total Force \n";
             myfile<<f[i][0]<<","<<f[i][1]<<","<<f[i][2]<<"\n";
+
             // add the spherical harmonics component and subtract the far-field affect (FDM)
-            // f[i][0] += F_2B[0] - K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
-            // f[i][1] += F_2B[1] - K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
-            // f[i][2] += F_2B[2] - K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
+            F_dip2B_FDM[0]= K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
+            F_dip2B_FDM[1]= K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
+            F_dip2B_FDM[2]= K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
+
+            myfile<<"Force from 2B corrections (FDM) \n";
+            myfile<<F_dip2B_FDM.transpose()<<"\n";
 
           }
         }
