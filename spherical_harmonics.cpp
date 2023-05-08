@@ -24,7 +24,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     double mu=(1+susc)*mu0;
     susc_eff=3*susc/(susc+3);
     sep = SEP.norm();
-
+    double sep_sq = sep*sep;
     // axis definition
     z_cap=SEP/sep;
 
@@ -145,6 +145,29 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Beta_11_2Bdip=Beta_1_2Bdip(0);
     Beta_12_2Bdip=Beta_1_2Bdip(1);
 
+    // correction force check
+    Eigen::Vector3d Mi_2Bdip, Mj_2Bdip;
+
+    Mi_2Bdip=Eigen::Vector3d::Zero();
+    Mi_2Bdip= (Beta_01_2Bdip*z_cap + Beta_11_2Bdip*x_cap)*(4*M_PI*a*a*a);
+
+    Mj_2Bdip=Eigen::Vector3d::Zero();
+    Mj_2Bdip= (Beta_02_2Bdip*z_cap + Beta_12_2Bdip*x_cap)*(4*M_PI*a*a*a);
+
+    double mir, mjr, mumu;
+    mir=Mi_2Bdip.dot(SEP)/sep;
+    mjr=Mj_2Bdip.dot(SEP)/sep;
+    mumu = Mi_2Bdip.dot(Mj_2Bdip);
+
+    double K = 3e-7/sep_sq/sep_sq;
+    
+    F_dip2B[0] = K*(mir*Mj_2Bdip[0]+mjr*Mi_2Bdip[0]+(mumu-5*mjr*mir)*SEP[0]/sep);
+    F_dip2B[1] = K*(mir*Mj_2Bdip[1]+mjr*Mi_2Bdip[1]+(mumu-5*mjr*mir)*SEP[1]/sep);
+    F_dip2B[2] = K*(mir*Mj_2Bdip[2]+mjr*Mi_2Bdip[2]+(mumu-5*mjr*mir)*SEP[2]/sep);
+
+    // myfile<<"Force from 2B corrections \n";
+    // myfile<<F_dip2B.transpose()<<"\n";
+    
     // M_dipole = 4*M_PI*a*a*a*susc_eff*H0/3;
     // double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
     // double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
@@ -191,6 +214,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
 
+    
+    // myfile<<"Force from 2B \n";
+    // myfile<<F_act_coord.transpose()<<"\n";
+    
     // std::cout<<"F"<<F<<std::endl<<std::endl;
     // std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
 
@@ -207,6 +234,11 @@ Eigen::Vector3d spherical_harmonics::get_force(){
 Eigen::Vector3d spherical_harmonics::get_force_actual_coord(){
     return F_act_coord;
 }
+
+Eigen::Vector3d spherical_harmonics::get_force_2B_corrections(){
+    return F_dip2B;
+}
+
 
 double spherical_harmonics::nchoosek(int n, int k){
     if (k > n) return 0;

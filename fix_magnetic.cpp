@@ -409,7 +409,13 @@ void FixMagnetic::post_force(int vflag)
 
             myfile<<"Force from 2B \n";
             myfile<<F_2B.transpose()<<"\n";
-            
+
+            Eigen::Vector3d F_dip2B_sph;
+            F_dip2B_sph=particle_i_j.get_force_2B_corrections();
+
+            myfile<<"Force from 2B corrections (spherical) \n";
+            myfile<<F_dip2B_sph.transpose()<<"\n";
+
             Eigen::Vector3d F_dip2B, F_dip2B_FDM;
             
             mir=mu_i_vector.dot(SEP)/sep;
@@ -424,17 +430,6 @@ void FixMagnetic::post_force(int vflag)
             myfile<<"Force from 2B corrections \n";
             myfile<<F_dip2B.transpose()<<"\n";
 
-            // add the spherical harmonics component and subtract the far-field affect (MDM)
-            f[i][0] += F_2B[0] - F_dip2B[0];
-            f[i][1] += F_2B[1] - F_dip2B[1];
-            f[i][2] += F_2B[2] - F_dip2B[2];
-            
-            myfile<<"2B - 2B corrections force \n";
-            myfile<<F_2B.transpose()-F_dip2B.transpose()<<"\n";
-
-            myfile<<"Total Force \n";
-            myfile<<f[i][0]<<","<<f[i][1]<<","<<f[i][2]<<"\n";
-
             // add the spherical harmonics component and subtract the far-field affect (FDM)
             F_dip2B_FDM[0]= K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
             F_dip2B_FDM[1]= K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
@@ -443,6 +438,17 @@ void FixMagnetic::post_force(int vflag)
             myfile<<"Force from 2B corrections (FDM) \n";
             myfile<<F_dip2B_FDM.transpose()<<"\n";
 
+
+            // add the spherical harmonics component and subtract the far-field affect (MDM)
+            f[i][0] += F_2B[0] - F_dip2B_sph[0];
+            f[i][1] += F_2B[1] - F_dip2B_sph[1];
+            f[i][2] += F_2B[2] - F_dip2B_sph[2];
+            
+            myfile<<"2B - 2B corrections force \n";
+            myfile<<F_2B.transpose()-F_dip2B_sph.transpose()<<"\n";
+
+            myfile<<"Total Force \n";
+            myfile<<f[i][0]<<","<<f[i][1]<<","<<f[i][2]<<"\n";
           }
         }
       }

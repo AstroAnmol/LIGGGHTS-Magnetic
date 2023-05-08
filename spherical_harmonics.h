@@ -19,6 +19,7 @@ class spherical_harmonics{
         Eigen::Vector3d M_i, M_dipole, M_j;
         Eigen::Vector3d F;
         Eigen::Vector3d F_act_coord;
+        Eigen::Vector3d F_dip2B;
         //functions
         double nchoosek(int n, int k);
         double lpmn_cos(int n, int m, double theta);
@@ -29,5 +30,6 @@ class spherical_harmonics{
         Eigen::Vector3d mag_field(double r, double theta, double phi);
         Eigen::Vector3d get_force();
         Eigen::Vector3d get_force_actual_coord();
+        Eigen::Vector3d get_force_2B_corrections();
 };
 #endif
