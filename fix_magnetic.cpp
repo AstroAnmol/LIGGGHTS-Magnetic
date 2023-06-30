@@ -222,10 +222,6 @@ void FixMagnetic::setup(int vflag)
 
 void FixMagnetic::post_force(int vflag)
 { 
-
-  // std::ofstream myfile;
-  // myfile.open("print_file.txt", std::ios::out | std::ios::app | std::ios::binary);
-  
   int i,j,ii,jj,inum,jnum;
   int *ilist,*jlist,*numneigh,**firstneigh,*slist;
   double sep_sq, sep, mir, mjr, mumu, A, K, muR, susc, susc_eff;
@@ -235,8 +231,7 @@ void FixMagnetic::post_force(int vflag)
   double **f = atom->f;
   double *q = atom->q;
   double p4 = M_PI*4;
-  double mu0 = p4*1e-7; //for SI units changed by Anmol
-  //double u=1;
+  double mu0 = p4*1e-7;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
   int nghost = atom->nghost;
@@ -253,19 +248,15 @@ void FixMagnetic::post_force(int vflag)
   ilist = list->ilist;
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
-
-  // std::cout<<inum<<std::endl;
   
   if (varflag == CONSTANT) {
-    // myfile<<"------------------------------------------ \n";
-    // myfile<<" Dipole moment calcualtions \n";
-    // myfile<<"------------------------------------------ \n";
+
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
 
       if (mask[i] & groupbit) {
         susc= susceptibility_[type[i]-1];
-        susc_eff=3*susc/(susc+3);//3*(susc-1)/(susc+2);
+        susc_eff=3*susc/(susc+3);
         double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3;
         mu[i][0] = C*ex;
         mu[i][1] = C*ey;
@@ -280,9 +271,7 @@ void FixMagnetic::post_force(int vflag)
           j &= NEIGHMASK;
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
-          // r = sqrt(rsq);
           A = C/p4/sep/sep/sep;
-          // SEP /= sep;
           
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
@@ -306,14 +295,9 @@ void FixMagnetic::post_force(int vflag)
       }
     }
 
-    // myfile<<"------------------------------------------ \n";
-    // myfile<<" MDM calcualtions \n";
-    // myfile<<"------------------------------------------ \n";
-
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
-      // myfile<<"------------------------------------ \n";
-      // myfile<<"i: "<<i<<"\n";
+    
       if (mask[i] & groupbit) {
         jlist = firstneigh[i];
         jnum = numneigh[i];
@@ -322,43 +306,29 @@ void FixMagnetic::post_force(int vflag)
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
-          // myfile<<"j_1: "<<j<<"\n";
           j &= NEIGHMASK;
-          // myfile<<"j_2: "<<j<<"\n";
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
           sep_sq = sep*sep;
-          
-          //K = 3e-4/rsq/rsq;
+
           K = 3e-7/sep_sq/sep_sq;
-  
-          // dx /= r;
 
           mir=mu_i_vector.dot(SEP)/sep;
           mjr=mu_j_vector.dot(SEP)/sep;
           mumu = mu_i_vector.dot(mu_j_vector);
-
-          
           
           f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP[0]/sep);
           f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP[1]/sep);
           f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP[2]/sep);
-          
-          // myfile<<"force_MDM \n";
-          // myfile<<f[i][0]<<","<<f[i][1]<<","<<f[i][2]<<"\n";
         }
       }
-      
-      // myfile<<"MDM loop over"<<"\n";
-      // myfile<<"------------------------------------ \n";
     }
     // Spherical Harmonics
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
-      // myfile<<"------------------------------------ \n";
       // myfile<<"i: "<<i<<"\n";
       if (mask[i] & groupbit) {
         susc= susceptibility_[type[i]-1];
@@ -370,85 +340,32 @@ void FixMagnetic::post_force(int vflag)
         jnum = numneigh[i];
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
-        // std::cout<<"jlist"<<jnum<<std::endl<<std::endl;
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
-          // myfile<<"j_1: "<<j<<"\n";
           j &= NEIGHMASK;
-          // myfile<<"j_2: "<<j<<"\n";
+
           Eigen::Vector3d mu_j_vector;
-          // std::cout<<"i: "<<i<<"j: "<<j<<std::endl<<std::endl;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-          sep = SEP.norm();
-          // r = sqrt(rsq);
-          A = C/p4/sep/sep/sep;
-          K = 3e-7/sep_sq/sep_sq;
-          
 
-          double mr = mu_i_dipole.dot(SEP)/sep;
-          double mir = mu_i_vector.dot(SEP)/sep;
-          double mjr = mu_j_vector.dot(SEP)/sep;
-
-          double mumu_d=mu_i_dipole.dot(mu_i_dipole);
-          // double mumu=mu_i_vector.dot(mu_j_vector);
-
-          if (sep/rad[i] < 1000){
+          if (sep/rad[i] < 4.2){
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
-            
-            // myfile<<"------------------------------------------ \n";
-            // myfile<<" Just before spherical harmonics is called \n";
-            // myfile<<"------------------------------------------ \n";
+
             spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector,mu_j_vector);
             
             Eigen::Vector3d F_2B;
             F_2B=particle_i_j.get_force_actual_coord();
 
-            // myfile<<"Force from 2B \n";
-            // myfile<<F_2B.transpose()<<"\n";
-
             Eigen::Vector3d F_dip2B_sph;
             F_dip2B_sph=particle_i_j.get_force_2B_corrections();
-
-            // myfile<<"Force from 2B corrections (spherical) \n";
-            // myfile<<F_dip2B_sph.transpose()<<"\n";
-
-            // Eigen::Vector3d F_dip2B, F_dip2B_FDM;
-            
-            // mir=mu_i_vector.dot(SEP)/sep;
-            // mjr=mu_j_vector.dot(SEP)/sep;
-            // mumu = mu_i_vector.dot(mu_j_vector);
-
-            // F_dip2B[0] = K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP[0]/sep);
-            // F_dip2B[1] = K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP[1]/sep);
-            // F_dip2B[2] = K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP[2]/sep);
-          
-
-            // myfile<<"Force from 2B corrections \n";
-            // myfile<<F_dip2B.transpose()<<"\n";
-
-            // add the spherical harmonics component and subtract the far-field affect (FDM)
-            // F_dip2B_FDM[0]= K*(mr*mu_i_dipole[0]+mr*mu_i_dipole[0]+(mumu_d-5*mr*mr)*SEP[0]/sep);
-            // F_dip2B_FDM[1]= K*(mr*mu_i_dipole[1]+mr*mu_i_dipole[1]+(mumu_d-5*mr*mr)*SEP[1]/sep);
-            // F_dip2B_FDM[2]= K*(mr*mu_i_dipole[2]+mr*mu_i_dipole[2]+(mumu_d-5*mr*mr)*SEP[2]/sep);
-
-            // myfile<<"Force from 2B corrections (FDM) \n";
-            // myfile<<F_dip2B_FDM.transpose()<<"\n";
-
 
             // add the spherical harmonics component and subtract the far-field affect (MDM)
             f[i][0] += F_2B[0] - F_dip2B_sph[0];
             f[i][1] += F_2B[1] - F_dip2B_sph[1];
             f[i][2] += F_2B[2] - F_dip2B_sph[2];
-            
-            // myfile<<"2B - 2B corrections force \n";
-            // myfile<<F_2B.transpose()-F_dip2B_sph.transpose()<<"\n";
-
-            // myfile<<"Total Force \n";
-            // myfile<<f[i][0]<<","<<f[i][1]<<","<<f[i][2]<<"\n";
           }
         }
       }

@@ -6,11 +6,7 @@
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
-    // std::ofstream myfile;
-    // myfile.open("print_file.txt", std::ios::out | std::ios::app | std::ios::binary);
-    // myfile<<"------------------------------------------ \n";
-    // myfile<<"Spherical Harmonics Calculation Started \n";
-    // myfile<<"------------------------------------------ \n";
+
     // variable assignment
     a=radius;
     susc=susceptibilty;
@@ -21,17 +17,18 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
 
     L=10; //choose option later
+ 
     double mu=(1+susc)*mu0;
     susc_eff=3*susc/(susc+3);
     sep = SEP.norm();
     double sep_sq = sep*sep;
+
     // axis definition
     z_cap=SEP/sep;
 
     x_cap=(H0-H0.dot(z_cap)*z_cap);
 
     if (x_cap.norm()==0){
-      // how to define the axis in this case
         x_cap<<z_cap[2], 0, -z_cap[0];
         y_cap=z_cap.cross(x_cap);
     }
@@ -39,19 +36,12 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         x_cap=x_cap/x_cap.norm();
 
         y_cap=z_cap.cross(x_cap);
-
     }
-    // std::cout<<"x_cap"<<x_cap.transpose()<<std::endl<<std::endl;
-    // std::cout<<"y_cap"<<y_cap.transpose()<<std::endl<<std::endl;
-    // std::cout<<"z_cap"<<z_cap.transpose()<<std::endl<<std::endl;
 
     double H_prll, H_perp;
 
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
-
-    // std::cout<<"Mag_parallel: "<<H_prll<<std::endl;
-    // std::cout<<"Mag_perp: "<<H_perp<<std::endl<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
@@ -76,7 +66,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Am.block(L,0,L,L)=Gamma_m;
         Am.block(L,L,L,L)=X;
 
-
         //qm vector
         Eigen::VectorXd qm(L);
         qm=Eigen::VectorXd::Zero(L);
@@ -91,8 +80,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Eigen::VectorXd Qm(2*L);
         Qm.block(0,0,L,1)=qm;
         Qm.block(L,0,L,1)=qm;
-        // std::cout<<"m"<<m<<std::endl;
-        // std::cout<<"qm"<<qm<<std::endl<<std::endl;
 
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
@@ -107,13 +94,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
             Beta2_1=Beta_m.block(L,0,L,1);
         }
     };
-
-    
-    // myfile<<"PRINTING BETA \n";
-    // myfile<<"Beta1_0"<<Beta1_0.transpose()<<"\n";
-    // myfile<<"Beta2_0"<<Beta2_0.transpose()<<"\n";
-    // myfile<<"Beta1_1"<<Beta1_1.transpose()<<"\n";
-    // myfile<<"Beta2_1"<<Beta2_1.transpose()<<"\n";
 
     //adjust two-body dipole moments
     double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
@@ -164,17 +144,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     F_dip2B[1] = K*(mir*Mj_2Bdip[1]+mjr*Mi_2Bdip[1]+(mumu-5*mjr*mir)*SEP[1]/sep);
     F_dip2B[2] = K*(mir*Mj_2Bdip[2]+mjr*Mi_2Bdip[2]+(mumu-5*mjr*mir)*SEP[2]/sep);
 
-    // myfile<<"Force from 2B corrections \n";
-    // myfile<<F_dip2B.transpose()<<"\n";
-    
-    // M_dipole = 4*M_PI*a*a*a*susc_eff*H0/3;
-    // double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
-    // double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
-
-    // myfile<<"PRINTING BETA CORRECTIONS \n";
-    // myfile<<Beta_01_dip<<", "<<Beta_11_dip<<", "<<Beta_02_dip<<", "<<Beta_12_dip<<"\n";
-    // myfile<<Beta_01_2Bdip<<", "<<Beta_11_2Bdip<<", "<<Beta_02_2Bdip<<", "<<Beta_12_2Bdip<<"\n";
-
     Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
     Beta2_0[0]=Beta2_0[0] + Beta_02_dip - Beta_02_2Bdip;
     Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
@@ -213,17 +182,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
 
-    
-    // myfile<<"Force from 2B \n";
-    // myfile<<F_act_coord.transpose()<<"\n";
-    
-    // std::cout<<"F"<<F<<std::endl<<std::endl;
-    // std::cout<<"F_act_cord"<<F_act_coord<<std::endl<<std::endl;
-
-    // myfile<<"------------------------------------------ \n";
-    // myfile<<"Spherical Harmonics Calculation Ended \n";
-    // myfile<<"------------------------------------------ \n";
-    // myfile.close();
 }
 
 Eigen::Vector3d spherical_harmonics::get_force(){

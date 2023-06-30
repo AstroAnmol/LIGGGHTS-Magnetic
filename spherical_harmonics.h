@@ -16,7 +16,7 @@ class spherical_harmonics{
         Eigen::Vector3d SEP;
         Eigen::Vector3d z_cap, x_cap, y_cap;
         Eigen::VectorXd Beta1_0, Beta2_0, Beta1_1, Beta2_1;
-        Eigen::Vector3d M_i, M_dipole, M_j;
+        Eigen::Vector3d M_i, M_j;
         Eigen::Vector3d F;
         Eigen::Vector3d F_act_coord;
         Eigen::Vector3d F_dip2B;
