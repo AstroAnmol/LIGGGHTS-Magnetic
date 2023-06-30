@@ -6,8 +6,8 @@
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
-    std::ofstream myfile;
-    myfile.open("print_file.txt", std::ios::out | std::ios::app | std::ios::binary);
+    // std::ofstream myfile;
+    // myfile.open("print_file.txt", std::ios::out | std::ios::app | std::ios::binary);
     // myfile<<"------------------------------------------ \n";
     // myfile<<"Spherical Harmonics Calculation Started \n";
     // myfile<<"------------------------------------------ \n";
@@ -76,7 +76,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Am.block(L,0,L,L)=Gamma_m;
         Am.block(L,L,L,L)=X;
 
-        // std::cout<<X<<std::endl;
 
         //qm vector
         Eigen::VectorXd qm(L);
@@ -110,11 +109,11 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     };
 
     
-    myfile<<"PRINTING BETA \n";
-    myfile<<"Beta1_0"<<Beta1_0.transpose()<<"\n";
-    myfile<<"Beta2_0"<<Beta2_0.transpose()<<"\n";
-    myfile<<"Beta1_1"<<Beta1_1.transpose()<<"\n";
-    myfile<<"Beta2_1"<<Beta2_1.transpose()<<"\n";
+    // myfile<<"PRINTING BETA \n";
+    // myfile<<"Beta1_0"<<Beta1_0.transpose()<<"\n";
+    // myfile<<"Beta2_0"<<Beta2_0.transpose()<<"\n";
+    // myfile<<"Beta1_1"<<Beta1_1.transpose()<<"\n";
+    // myfile<<"Beta2_1"<<Beta2_1.transpose()<<"\n";
 
     //adjust two-body dipole moments
     double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
@@ -172,9 +171,9 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // double Beta_01_2Bdip = M_dipole.dot(z_cap)/(4*M_PI*a*a*a);
     // double Beta_11_2Bdip = -M_dipole.dot(x_cap)/(4*M_PI*a*a*a);
 
-    myfile<<"PRINTING BETA CORRECTIONS \n";
-    myfile<<Beta_01_dip<<", "<<Beta_11_dip<<", "<<Beta_02_dip<<", "<<Beta_12_dip<<"\n";
-    myfile<<Beta_01_2Bdip<<", "<<Beta_11_2Bdip<<", "<<Beta_02_2Bdip<<", "<<Beta_12_2Bdip<<"\n";
+    // myfile<<"PRINTING BETA CORRECTIONS \n";
+    // myfile<<Beta_01_dip<<", "<<Beta_11_dip<<", "<<Beta_02_dip<<", "<<Beta_12_dip<<"\n";
+    // myfile<<Beta_01_2Bdip<<", "<<Beta_11_2Bdip<<", "<<Beta_02_2Bdip<<", "<<Beta_12_2Bdip<<"\n";
 
     Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
     Beta2_0[0]=Beta2_0[0] + Beta_02_dip - Beta_02_2Bdip;
@@ -224,7 +223,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // myfile<<"------------------------------------------ \n";
     // myfile<<"Spherical Harmonics Calculation Ended \n";
     // myfile<<"------------------------------------------ \n";
-    myfile.close();
+    // myfile.close();
 }
 
 Eigen::Vector3d spherical_harmonics::get_force(){
@@ -316,7 +315,7 @@ Eigen::Vector3d spherical_harmonics::integrand(double th, double ph){
     H_sph= mag_field(a, th, ph) + H0_sph;
     H_cart=pre*H_sph;
     //change the magnetic field for far field affects (is it correct)
-    // H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
+    H_cart[1]=H_cart[1]-(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, th)*std::sin(ph)/(a*a));
     double h=H_cart.norm();
     T_cart=mu0*(H_cart*H_cart.transpose() - 0.5*(h*h)*Eigen::Matrix3d::Identity());
     rn_hat<<std::sin(th)*std::cos(ph),std::sin(th)*std::sin(ph),std::cos(th);
