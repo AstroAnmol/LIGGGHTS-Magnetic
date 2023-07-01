@@ -15,9 +15,20 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     M_i=M_i_vec;
     M_j=M_j_vec;
 
+    if (susc<4){
+        L=10;}
+    else if (susc>=4 && susc<7){
+        L=20;}
+    else if (susc>=7 && susc<12){
+        L=30;}
+    else if (susc>=12 && susc<20){
+        L=40;}
+    else if (susc>=20 && susc<35){
+        L=45;}
+    else if (susc>=35 && susc<50){
+        L=50;
+    }
 
-    L=10; //choose option later
- 
     double mu=(1+susc)*mu0;
     susc_eff=3*susc/(susc+3);
     sep = SEP.norm();
