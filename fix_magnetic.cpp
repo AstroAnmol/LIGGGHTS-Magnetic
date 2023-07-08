@@ -350,7 +350,7 @@ void FixMagnetic::post_force(int vflag)
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
 
-          if (sep/rad[i] < 4.2){
+          if (sep/rad[i] < 6){
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
 
