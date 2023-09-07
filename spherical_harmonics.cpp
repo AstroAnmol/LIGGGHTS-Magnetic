@@ -106,6 +106,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         }
     };
 
+    // std::cout<<Beta1_0<<std::endl<<std::endl;
+
     //adjust two-body dipole moments
     double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
     double Beta_11_dip= -M_i.dot(x_cap)/(4*M_PI*a*a*a);
