@@ -38,6 +38,7 @@
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
 #include <eigen-3.4.0/Eigen/Dense>
+#include <Eigen/Core>
 #include <iostream>
 #include <fstream>
 #include "spherical_harmonics.h"
@@ -57,6 +58,8 @@
 #include "variable.h"
 #include "memory.h"
 #include "error.h"
+
+#define EIGEN_DONT_PARALLELIZE
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -236,6 +239,9 @@ void FixMagnetic::post_force(int vflag)
   int nlocal = atom->nlocal;
   int nghost = atom->nghost;
   int *type = atom->type;
+
+  Eigen::initParallel();
+
   // reallocate hfield array if necessary
   Eigen::Vector3d SEP;
 
