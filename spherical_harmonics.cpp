@@ -38,6 +38,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     sep = SEP.norm();
     double sep_sq = sep*sep;
 
+    std::cout<< "Initialization Done" <<std::endl<<std::endl;
+
     // axis definition
     z_cap=SEP/sep;
 
@@ -58,10 +60,13 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
+    std::cout<< "Axis changed" <<std::endl<<std::endl;
+
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
         for (int i = 0; i < L; i++){
             for (int j = 0; j < L; j++){
+                std::cout<< "Entered the innermost for loop" <<std::endl<<std::endl;
                 // X matrix
                 if (i==j){   
                     X(i,j)=(i+1)*(mu/mu0) + (i+1) + 1;
@@ -72,8 +77,11 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
                 // Delta and Gamma matrix
                 Delta_m(i,j)=std::pow((-1),((i+1)+m))*((i+1)*(mu/mu0)-(i+1))*nchoosek(i+1+j+1, j+1-m)*std::pow(a,(2*(i+1)+1))/std::pow(sep,(i+1+j+1+1));
                 Gamma_m(i,j)=std::pow((-1), (i+1+j+1))*Delta_m(i,j);
-            }   
+            }
+            std::cout<< "Ended the innermost for loop" <<std::endl<<std::endl;   
         }
+
+        std::cout<< "Started making A matrix" <<std::endl<<std::endl;
         // 2L X 2L Matrix
         Eigen::MatrixXd Am(2*L, 2*L);
         Am.block(0,0,L,L)=X;
@@ -99,6 +107,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
 
+        std::cout<< "Solved linear equation" <<std::endl<<std::endl;
+        
         Beta_m=Am.colPivHouseholderQr().solve(Qm);
         if (m==0){
             Beta1_0=Beta_m.block(0,0,L,1);
@@ -119,7 +129,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     double Beta_02_dip=  M_j.dot(z_cap)/(4*M_PI*a*a*a);
     double Beta_12_dip= -M_j.dot(x_cap)/(4*M_PI*a*a*a);
 
-    Eigen::MatrixXd A0(2, 2), A1(2, 2);
+    Eigen::Matrix2d A0(2, 2), A1(2, 2);
 
     A0<<    mu/mu0 + 2 , (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),
             (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
