@@ -3,13 +3,14 @@
 #include <fstream>
 #include "spherical_harmonics.h" 
 #include <eigen-3.4.0/Eigen/Dense>
+#define EIGEN_DONT_PARALLELIZE
 
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
 
 
-    Eigen::initParallel();
+    // Eigen::initParallel();
     // variable assignment
     a=radius;
     susc=susceptibilty;

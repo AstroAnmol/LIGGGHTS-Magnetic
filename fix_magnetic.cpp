@@ -240,7 +240,7 @@ void FixMagnetic::post_force(int vflag)
   int nghost = atom->nghost;
   int *type = atom->type;
 
-  Eigen::initParallel();
+  // Eigen::initParallel();
 
   // reallocate hfield array if necessary
   Eigen::Vector3d SEP;
