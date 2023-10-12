@@ -38,13 +38,13 @@ class FixMagnetic : public Fix {
   int xvar,yvar,zvar,xstyle,ystyle,zstyle;
   int nlevels_respa;
   class NeighList *list;
-  double nchoosek(int n, int k);
+  // double nchoosek(int n, int k);
   int maxatom;
   double **hfield;
 
 protected:
-  class FixPropertyGlobal* fix_susceptibility_;
-  double *susceptibility_;
+  // class FixPropertyGlobal* fix_susceptibility_;
+  // double *susceptibility_;
 
 };
 

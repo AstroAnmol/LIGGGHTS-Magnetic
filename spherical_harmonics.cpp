@@ -1,11 +1,13 @@
 #include <iostream>
 #include <cmath>
-#include <fstream>
+// #include <fstream>
 #include "spherical_harmonics.h" 
 #include <eigen-3.4.0/Eigen/Dense>
-#define EIGEN_DONT_PARALLELIZE
+// #define EIGEN_DONT_PARALLELIZE
 
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
+
+
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
 
@@ -38,7 +40,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     sep = SEP.norm();
     double sep_sq = sep*sep;
 
-    std::cout<< "Initialization Done" <<std::endl<<std::endl;
+    // std::cout<< "Initialization Done" <<std::endl<<std::endl;
 
     // axis definition
     z_cap=SEP/sep;
@@ -60,13 +62,13 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
-    std::cout<< "Axis changed" <<std::endl<<std::endl;
+    // std::cout<< "Axis changed" <<std::endl<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
         for (int i = 0; i < L; i++){
             for (int j = 0; j < L; j++){
-                std::cout<< "Entered the innermost for loop" <<std::endl<<std::endl;
+                // std::cout<< "Entered the innermost for loop" <<std::endl<<std::endl;
                 // X matrix
                 if (i==j){   
                     X(i,j)=(i+1)*(mu/mu0) + (i+1) + 1;
@@ -78,10 +80,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
                 Delta_m(i,j)=std::pow((-1),((i+1)+m))*((i+1)*(mu/mu0)-(i+1))*nchoosek(i+1+j+1, j+1-m)*std::pow(a,(2*(i+1)+1))/std::pow(sep,(i+1+j+1+1));
                 Gamma_m(i,j)=std::pow((-1), (i+1+j+1))*Delta_m(i,j);
             }
-            std::cout<< "Ended the innermost for loop" <<std::endl<<std::endl;   
+            // std::cout<< "Ended the innermost for loop" <<std::endl<<std::endl;   
         }
 
-        std::cout<< "Started making A matrix" <<std::endl<<std::endl;
+        // std::cout<< "Started making A matrix" <<std::endl<<std::endl;
         // 2L X 2L Matrix
         Eigen::MatrixXd Am(2*L, 2*L);
         Am.block(0,0,L,L)=X;
@@ -106,8 +108,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
-
-        std::cout<< "Solved linear equation" <<std::endl<<std::endl;
         
         Beta_m=Am.colPivHouseholderQr().solve(Qm);
         if (m==0){
@@ -119,6 +119,9 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
             Beta2_1=Beta_m.block(L,0,L,1);
         }
     };
+
+
+    // std::cout<< "Solved linear equation loop" <<std::endl<<std::endl;
 
     // std::cout<<Beta1_0<<std::endl<<std::endl;
 
@@ -177,7 +180,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Beta2_1[0]=Beta2_1[0] + Beta_12_dip - Beta_12_2Bdip;
 
     // Create a 3D spherical mesh
-    int N =180;
+    int N =60;
     double dang= M_PI/N;
     Eigen::VectorXd inc= Eigen::VectorXd::LinSpaced(N+1,dang/2, M_PI + dang/2).transpose();
     Eigen::VectorXd az= Eigen::VectorXd::LinSpaced(2*N+1,dang/2, 2*M_PI + dang/2).transpose();

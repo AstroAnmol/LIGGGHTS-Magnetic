@@ -38,9 +38,9 @@
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
 #include <eigen-3.4.0/Eigen/Dense>
-#include <eigen-3.4.0/Eigen/Core>
-#include <iostream>
-#include <fstream>
+// #include <eigen-3.4.0/Eigen/Core>
+// #include <iostream>
+// #include <fstream>
 #include "spherical_harmonics.h"
 #include <math.h>
 #include <string.h>
@@ -115,8 +115,8 @@ FixMagnetic::~FixMagnetic()
   delete [] zstr;
   memory->destroy(hfield);
 
-  if (susceptibility_)
-    delete []susceptibility_;
+  // if (susceptibility_)
+  //   delete []susceptibility_;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -133,7 +133,7 @@ int FixMagnetic::setmask()
 
 void FixMagnetic::init()
 {
-  //if (!atom->q_flag) error->all(FLERR,"Fix hfield requires atom attribute q");
+  // if (!atom->q_flag) error->all(FLERR,"Fix hfield requires atom attribute q");
 
   // check variables
 
@@ -168,7 +168,7 @@ void FixMagnetic::init()
     varflag = EQUAL;
   else varflag = CONSTANT;
 
-  //Neighbor List
+  // Neighbor List
 
   int irequest = neighbor->request((void *) this);
   neighbor->requests[irequest]->pair = 0;
@@ -183,7 +183,7 @@ void FixMagnetic::init()
   if(force->cg_active())
     error->cg(FLERR,this->style);
 
-  int max_type = atom->get_properties()->max_type();
+  // int max_type = atom->get_properties()->max_type();
 
   // if (susceptibility_) delete []susceptibility_;
   // susceptibility_ = new double[max_type];
@@ -337,7 +337,7 @@ void FixMagnetic::post_force(int vflag)
       i = ilist[ii];
       // myfile<<"i: "<<i<<"\n";
       if (mask[i] & groupbit) {
-        susc= susceptibility_[type[i]-1];
+        susc= 1; //susceptibility_[type[i]-1];
         susc_eff=3*susc/(susc+3);
         double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3;
         Eigen::Vector3d mu_i_dipole;
@@ -355,8 +355,8 @@ void FixMagnetic::post_force(int vflag)
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-
-          if (sep/rad[i] < 6){
+          sep = SEP.norm();
+          if (sep/rad[i] < 4.5){
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
 
@@ -401,15 +401,15 @@ double FixMagnetic::memory_usage()
   return bytes;
 }
 
-double FixMagnetic::nchoosek(int n, int k){
-    if (k > n) return 0;
-    if (k * 2 > n) k = n-k;
-    if (k == 0) return 1;
+// double FixMagnetic::nchoosek(int n, int k){
+//     if (k > n) return 0;
+//     if (k * 2 > n) k = n-k;
+//     if (k == 0) return 1;
 
-    int result = n;
-    for( int i = 2; i <= k; ++i ) {
-        result *= (n-i+1);
-        result /= i;
-    }
-    return result;
-}
+//     int result = n;
+//     for( int i = 2; i <= k; ++i ) {
+//         result *= (n-i+1);
+//         result /= i;
+//     }
+//     return result;
+// }
