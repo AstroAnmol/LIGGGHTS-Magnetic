@@ -180,7 +180,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Beta2_1[0]=Beta2_1[0] + Beta_12_dip - Beta_12_2Bdip;
 
     // Create a 3D spherical mesh
-    int N =60;
+    int N =36;
     double dang= M_PI/N;
     Eigen::VectorXd inc= Eigen::VectorXd::LinSpaced(N+1,dang/2, M_PI + dang/2).transpose();
     Eigen::VectorXd az= Eigen::VectorXd::LinSpaced(2*N+1,dang/2, 2*M_PI + dang/2).transpose();

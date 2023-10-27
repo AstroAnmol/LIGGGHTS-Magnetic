@@ -43,8 +43,8 @@ class FixMagnetic : public Fix {
   double **hfield;
 
 protected:
-  // class FixPropertyGlobal* fix_susceptibility_;
-  // double *susceptibility_;
+  class FixPropertyGlobal* fix_susceptibility_;
+  double *susceptibility_;
 
 };
 
