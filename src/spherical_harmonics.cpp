@@ -3,6 +3,7 @@
 // #include <fstream>
 #include "spherical_harmonics.h" 
 #include <eigen-3.4.0/Eigen/Dense>
+#include <boost/math/special_functions/legendre.hpp>
 // #define EIGEN_DONT_PARALLELIZE
 
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
@@ -312,7 +313,7 @@ Eigen::Vector3d spherical_harmonics::integrand(double th, double ph){
 
 //define associate legendre functions for cos(theta)
 double spherical_harmonics::lpmn_cos(int m, int n, double theta){
-    return std::pow(-1,m)*std::assoc_legendre(n, m, std::cos(theta));
+    return boost::math::legendre_p(n, m, std::cos(theta));
 }
 
 double spherical_harmonics::d_lpmn_cos(int m, int n, double theta){

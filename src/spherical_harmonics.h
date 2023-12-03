@@ -2,6 +2,7 @@
 #define SPHERICAL_HARMONICS_H
 #include <cmath>
 #include <eigen-3.4.0/Eigen/Dense>
+#include <boost/math/special_functions/legendre.hpp>
 
 class spherical_harmonics{
     private:
