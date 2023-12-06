@@ -166,18 +166,30 @@ namespace ContactModels
         double Ft_ela1 = -(kt * shear[0]);
         double Ft_ela2 = -(kt * shear[1]);
         double Ft_ela3 = -(kt * shear[2]);
-        double Ft1 = Ft_ela1;
-        double Ft2 = Ft_ela2;
-        double Ft3 = Ft_ela3;
+        //double Ft1 = Ft_ela1;
+        //double Ft2 = Ft_ela2;
+        //double Ft3 = Ft_ela3;
 
         // rescale frictional displacements and forces if needed
         const double Ft_shear = kt * shrmag; // sqrt(Ft1 * Ft1 + Ft2 * Ft2 + Ft3 * Ft3);
         const double Ft_friction = xmu * fabs(sidata.Fn);
 
+	// create damping force here instead, so the magnitude can be used in the sliding condition - ESF 09022022
+	const double gammat = sidata.gammat;
+        double Fd1 = -(gammat*sidata.vtr1);
+        double Fd2 = -(gammat*sidata.vtr2);
+        double Fd3 = -(gammat*sidata.vtr3);
+	const double Ft_damp = sqrt(Fd1*Fd1 + Fd2*Fd2 + Fd3*Fd3);
+
+	// combine forces here instead of above
+	double Ft1 = Ft_ela1 + Fd1;
+        double Ft2 = Ft_ela2 + Fd2;
+        double Ft3 = Ft_ela3 + Fd3;
+
         // energy loss from sliding or damping
-        if (Ft_shear > Ft_friction) {
+        if ((Ft_shear+Ft_damp) > Ft_friction) {  // updated condition to include damping force - ESF 09022922
           if (shrmag != 0.0) {
-            const double ratio = Ft_friction / Ft_shear;
+            const double ratio = Ft_friction / (Ft_shear+Ft_damp);
             
             if(heating)
             {
@@ -211,10 +223,10 @@ namespace ContactModels
         }
         else
         {
-          const double gammat = sidata.gammat;
-          Ft1 -= (gammat*sidata.vtr1);
-          Ft2 -= (gammat*sidata.vtr2);
-          Ft3 -= (gammat*sidata.vtr3);
+         // const double gammat = sidata.gammat;
+          //Ft1 -= (gammat*sidata.vtr1);
+          //Ft2 -= (gammat*sidata.vtr2);
+          //Ft3 -= (gammat*sidata.vtr3);
           if(heating)
           {
               const double P_diss_local = gammat*(sidata.vtr1*sidata.vtr1+sidata.vtr2*sidata.vtr2+sidata.vtr3*sidata.vtr3); 
