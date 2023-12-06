@@ -37,7 +37,7 @@
     tjleps@gmail.com
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
-#include <eigen-3.4.0/Eigen/Dense>
+#include <Eigen/Dense>
 // #include <eigen-3.4.0/Eigen/Core>
 // #include <iostream>
 // #include <fstream>

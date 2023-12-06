@@ -2,7 +2,7 @@
 #include <cmath>
 // #include <fstream>
 #include "spherical_harmonics.h" 
-#include <eigen-3.4.0/Eigen/Dense>
+#include <Eigen/Dense>
 #include <boost/math/special_functions/legendre.hpp>
 // #define EIGEN_DONT_PARALLELIZE
 

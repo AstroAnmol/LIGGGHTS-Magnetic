@@ -363,7 +363,7 @@ LIB_PATH ?= ../../lib
 
 # Initialization of EXTRA_* variables
 # All -I include paths
-EXTRA_INC= -I ../../../library
+EXTRA_INC= -I ../../../library/eigen-3.4.0 -I ../../../library/boost-1.82.0
 # All -L library paths
 EXTRA_LIB=
 # All -l libraries
