@@ -13,6 +13,7 @@ class spherical_harmonics{
         double hmag; // magneitc field mag (A/m)
         double mu0=4*M_PI*1e-07;
         int L; // number of multipoles used
+        double H_prll, H_perp;
         Eigen::Vector3d H0;
         Eigen::Vector3d SEP;
         Eigen::Vector3d z_cap, x_cap, y_cap;
@@ -25,6 +26,18 @@ class spherical_harmonics{
         double nchoosek(int n, int k);
         double lpmn_cos(int n, int m, double theta);
         double d_lpmn_cos(int n, int m, double theta);
+        // Maxwell stress tensor functions
+        double mag_A(double r, double theta);
+        double mag_B(double r, double theta);
+        double mag_C(double r, double theta);
+        double mag_P(double r, double theta);
+        double mag_Q(double r, double theta);
+        double mag_U(double r, double theta);
+        double mag_V(double r, double theta);
+        double mag_W(double r, double theta);
+        // force integrands only theta
+        double fx_int(double theta);
+        double fz_int(double theta);
     public:
         spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec); // array for magnetic force parameters [a, susc]
         Eigen::Vector3d integrand(double th, double ph);
