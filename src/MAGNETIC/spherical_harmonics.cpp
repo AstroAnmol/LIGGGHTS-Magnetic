@@ -4,7 +4,7 @@
 #include "spherical_harmonics.h" 
 #include <Eigen/Dense>
 #include <boost/math/special_functions/legendre.hpp>
-#include <boost/math/quadrature/gauss_kronrod.hpp>>
+#include <boost/math/quadrature/gauss_kronrod.hpp>
 // #define EIGEN_DONT_PARALLELIZE
 
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
@@ -194,14 +194,14 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         return fz_int(th);
     };
 
-    std::cout<<fx_int(0)<<fx_int(M_PI)<<std::endl<<std::endl;
-    std::cout<<fz_int(0)<<fz_int(M_PI)<<std::endl<<std::endl;
+    // std::cout<<fx_int(0)<<fx_int(M_PI)<<std::endl<<std::endl;
+    // std::cout<<fz_int(0)<<fz_int(M_PI)<<std::endl<<std::endl;
 
     F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-14, &x_error)*mu0*a*a;
-    std::cout<<"x error "<<x_error<<std::endl<<std::endl;
+    // std::cout<<"x error "<<x_error<<std::endl<<std::endl;
 
     F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-14, &z_error)*mu0*a*a;
-    std::cout<<"z error "<<z_error<<std::endl<<std::endl;
+    // std::cout<<"z error "<<z_error<<std::endl<<std::endl;
     // Create a 3D spherical mesh
     // int N =180;
     // double dang= M_PI/N;
