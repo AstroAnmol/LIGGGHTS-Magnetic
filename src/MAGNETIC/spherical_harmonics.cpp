@@ -4,6 +4,7 @@
 #include "spherical_harmonics.h" 
 #include <Eigen/Dense>
 #include <boost/math/special_functions/legendre.hpp>
+#include <boost/math/quadrature/gauss_kronrod.hpp>>
 // #define EIGEN_DONT_PARALLELIZE
 
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
@@ -62,8 +63,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
-    std::cout<< "H perp :" << H_perp <<std::endl<<std::endl;
-    std::cout<< "H prll :" << H_prll <<std::endl<<std::endl;
+    // std::cout<< "H perp :" << H_perp <<std::endl<<std::endl;
+    // std::cout<< "H prll :" << H_prll <<std::endl<<std::endl;
 
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
@@ -180,23 +181,44 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
     Beta2_1[0]=Beta2_1[0] + Beta_12_dip - Beta_12_2Bdip;
 
-    // Create a 3D spherical mesh
-    int N =180;
-    double dang= M_PI/N;
-    Eigen::VectorXd inc= Eigen::VectorXd::LinSpaced(N+1,dang/2, M_PI + dang/2).transpose();
+    // Quadrature implementation
 
-    F=Eigen::Vector3d::Zero();
+    double x_error;
+    double z_error;
+    F = Eigen::Vector3d::Zero();
+
+    auto fx_integrand = [&](double th) {
+        return fx_int(th);
+    };
+    auto fz_integrand = [&](double th) {
+        return fz_int(th);
+    };
+
+    std::cout<<fx_int(0)<<fx_int(M_PI)<<std::endl<<std::endl;
+    std::cout<<fz_int(0)<<fz_int(M_PI)<<std::endl<<std::endl;
+
+    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-14, &x_error)*mu0*a*a;
+    std::cout<<"x error "<<x_error<<std::endl<<std::endl;
+
+    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-14, &z_error)*mu0*a*a;
+    std::cout<<"z error "<<z_error<<std::endl<<std::endl;
+    // Create a 3D spherical mesh
+    // int N =180;
+    // double dang= M_PI/N;
+    // Eigen::VectorXd inc= Eigen::VectorXd::LinSpaced(N+1,dang/2, M_PI + dang/2).transpose();
+
+    // F=Eigen::Vector3d::Zero();
     
-    // Integrating the force integrands
-    for (int ii = 0; ii < N+1; ii++){
-        double p;
-        if (ii==0 or ii==N){
-            p = 1;}
-        else {p = 2;}
-        double th=inc[ii];
-        F[0]=F[0] + fx_int(th)*p*dang/2;
-        F[2]=F[2] + fz_int(th)*p*dang/2;
-    }
+    // // Integrating the force integrands
+    // for (int ii = 0; ii < N+1; ii++){
+    //     double p;
+    //     if (ii==0 or ii==N){
+    //         p = 1;}
+    //     else {p = 2;}
+    //     double th=inc[ii];
+    //     F[0]=F[0] + fx_int(th)*p*dang/2;
+    //     F[2]=F[2] + fz_int(th)*p*dang/2;
+    // }
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
 
@@ -261,7 +283,7 @@ double spherical_harmonics::fx_int(double theta){
     term2 = mag_B(a,theta)*(4*mag_P(a,theta)+mag_U(a,theta))+mag_A(a,theta)*(4*mag_Q(a,theta)+mag_V(a,theta));
     term3 = 4*mag_B(a,theta)*mag_Q(a,theta)-mag_A(a,theta)*(4*mag_P(a,theta)+mag_U(a,theta))+mag_B(a,theta)*mag_V(a,theta)+mag_C(a,theta)*mag_W(a,theta);
 
-    res = -M_PI_4*(term1 - term2*std::cos(theta) + term3*std::sin(theta))*sin(theta)*mu0*a*a;
+    res = -M_PI_4*(term1 - term2*std::cos(theta) + term3*std::sin(theta))*sin(theta);
     return res;
 }
 
@@ -289,7 +311,7 @@ double spherical_harmonics::fz_int(double theta){
     double term2, term3, res;
     term2 = 4*mag_A_sq-4*mag_B_sq-4*mag_C_sq+8*mag_P_sq-8*mag_Q_sq+8*mag_PU+3*mag_U_sq-8*mag_QV-3*mag_V_sq-mag_W_sq;
     term3 = 2*(4*mag_AB+8*mag_PQ+4*mag_QU+4*mag_PV+3*mag_UV);
-    res = (M_PI/8)*(term2*std::cos(theta) - term3*std::sin(theta))*std::sin(theta)*mu0*a*a;
+    res = (M_PI/8)*(term2*std::cos(theta) - term3*std::sin(theta))*std::sin(theta);
     return res;
 }
 
