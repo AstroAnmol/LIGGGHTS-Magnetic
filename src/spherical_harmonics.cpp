@@ -1,6 +1,5 @@
-#include <iostream>
+// #include <iostream>
 #include <cmath>
-// #include <fstream>
 #include "spherical_harmonics.h" 
 #include <Eigen/Dense>
 #include <boost/math/special_functions/legendre.hpp>
@@ -42,8 +41,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     sep = SEP.norm();
     double sep_sq = sep*sep;
 
-    // std::cout<< "Initialization Done" <<std::endl<<std::endl;
-
     // axis definition
     z_cap=SEP/sep;
 
@@ -63,29 +60,21 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     H_prll=H0.dot(z_cap);
     H_perp=H0.dot(x_cap);
 
-    // std::cout<< "H perp :" << H_perp <<std::endl<<std::endl;
-    // std::cout<< "H prll :" << H_prll <<std::endl<<std::endl;
-
     for (int m= 0; m < 2; m++){
         Eigen::MatrixXd X(L,L), Delta_m(L,L), Gamma_m(L,L); 
         for (int i = 0; i < L; i++){
             for (int j = 0; j < L; j++){
-                // std::cout<< "Entered the innermost for loop" <<std::endl<<std::endl;
                 // X matrix
                 if (i==j){   
                     X(i,j)=(i+1)*(mu/mu0) + (i+1) + 1;
-                    // std::cout<<X(i,j)<<std::endl;
                 }
                 else{   X(i,j)=0;}
                 
                 // Delta and Gamma matrix
                 Delta_m(i,j)=std::pow((-1),((i+1)+m))*((i+1)*(mu/mu0)-(i+1))*nchoosek(i+1+j+1, j+1-m)*std::pow(a,(2*(i+1)+1))/std::pow(sep,(i+1+j+1+1));
                 Gamma_m(i,j)=std::pow((-1), (i+1+j+1))*Delta_m(i,j);
-            }
-            // std::cout<< "Ended the innermost for loop" <<std::endl<<std::endl;   
+            } 
         }
-
-        // std::cout<< "Started making A matrix" <<std::endl<<std::endl;
         // 2L X 2L Matrix
         Eigen::MatrixXd Am(2*L, 2*L);
         Am.block(0,0,L,L)=X;
@@ -121,11 +110,6 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
             Beta2_1=Beta_m.block(L,0,L,1);
         }
     };
-
-
-    // std::cout<< "Solved linear equation loop" <<std::endl<<std::endl;
-
-    // std::cout<<Beta1_0<<std::endl<<std::endl;
 
     //adjust two-body dipole moments
     double Beta_01_dip=  M_i.dot(z_cap)/(4*M_PI*a*a*a);
@@ -194,49 +178,13 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         return fz_int(th);
     };
 
-    // std::cout<<fx_int(0)<<fx_int(M_PI)<<std::endl<<std::endl;
-    // std::cout<<fz_int(0)<<fz_int(M_PI)<<std::endl<<std::endl;
-
-    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-14, &x_error)*mu0*a*a;
+    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-9, &x_error)*mu0*a*a;
     // std::cout<<"x error "<<x_error<<std::endl<<std::endl;
 
-    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-14, &z_error)*mu0*a*a;
+    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-9, &z_error)*mu0*a*a;
     // std::cout<<"z error "<<z_error<<std::endl<<std::endl;
-    // Create a 3D spherical mesh
-    // int N =180;
-    // double dang= M_PI/N;
-    // Eigen::VectorXd inc= Eigen::VectorXd::LinSpaced(N+1,dang/2, M_PI + dang/2).transpose();
-
-    // F=Eigen::Vector3d::Zero();
-    
-    // // Integrating the force integrands
-    // for (int ii = 0; ii < N+1; ii++){
-    //     double p;
-    //     if (ii==0 or ii==N){
-    //         p = 1;}
-    //     else {p = 2;}
-    //     double th=inc[ii];
-    //     F[0]=F[0] + fx_int(th)*p*dang/2;
-    //     F[2]=F[2] + fz_int(th)*p*dang/2;
-    // }
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
-
-    // std::cout<<"F"<<F.transpose()<<std::endl<<std::endl;
-    // std::cout<<"F act coord"<<F_act_coord.transpose()<<std::endl<<std::endl;
-    // Eigen::Matrix3d pre, post;
-    // double th=1;
-    // double ph=1;
-    // pre<<   std::sin(th)*std::cos(ph), std::cos(th)*std::cos(ph), -std::sin(ph),
-    //         std::sin(th)*std::sin(ph), std::cos(th)*std::sin(ph),  std::cos(ph),
-    //         std::cos(th), -std::sin(th),  0;
-    // post= pre.transpose();
-    // Eigen::Vector3d H0_sph, H_sph, H_cart, rn_hat;
-    // H0_sph=post*H0;
-    // std::cout<<"mag_field"<<mag_field(a,th,ph).transpose() + H0_sph.transpose()<<std::endl<<std::endl;
-    // std::cout<<"mag_field new "<<mag_A(a,th)*std::cos(ph)<<" "<<mag_B(a,th)*cos(ph)<<" "<<mag_C(a,th)*sin(ph)<<std::endl<<std::endl;
-    
-
 }
 
 /////////////////////////////////////////

@@ -38,9 +38,6 @@
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
 #include <Eigen/Dense>
-// #include <eigen-3.4.0/Eigen/Core>
-// #include <iostream>
-// #include <fstream>
 #include "spherical_harmonics.h"
 #include <math.h>
 #include <string.h>
@@ -243,8 +240,6 @@ void FixMagnetic::post_force(int vflag)
   int nghost = atom->nghost;
   int *type = atom->type;
 
-  // Eigen::initParallel();
-
   // reallocate hfield array if necessary
   Eigen::Vector3d SEP;
 
@@ -338,7 +333,6 @@ void FixMagnetic::post_force(int vflag)
     // Spherical Harmonics
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
-      // myfile<<"i: "<<i<<"\n";
       if (mask[i] & groupbit) {
         susc= susceptibility_[type[i]-1];
         susc_eff=3*susc/(susc+3);
@@ -379,11 +373,7 @@ void FixMagnetic::post_force(int vflag)
         }
       }
     }
-    // myfile<<"------------------------------------------------ \n";
-    // myfile<<"ONE RUN COMPLETE \n";
-    // myfile<<"------------------------------------------------ \n";
   }
-  // myfile.close();
 }
 
 /* ---------------------------------------------------------------------- */
@@ -403,16 +393,3 @@ double FixMagnetic::memory_usage()
   if (varflag == ATOM) bytes = atom->nmax*3 * sizeof(double);
   return bytes;
 }
-
-// double FixMagnetic::nchoosek(int n, int k){
-//     if (k > n) return 0;
-//     if (k * 2 > n) k = n-k;
-//     if (k == 0) return 1;
-
-//     int result = n;
-//     for( int i = 2; i <= k; ++i ) {
-//         result *= (n-i+1);
-//         result /= i;
-//     }
-//     return result;
-// }
