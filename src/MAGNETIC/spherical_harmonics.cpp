@@ -112,7 +112,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
         
-        Beta_m=Am.colPivHouseholderQr().solve(Qm);
+        Beta_m=Am.ldlt().solve(Qm);
         if (m==0){
             Beta1_0=Beta_m.block(0,0,L,1);
             Beta2_0=Beta_m.block(L,0,L,1);
@@ -147,8 +147,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
     Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
 
-    Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
-    Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
+    Beta_0_2Bdip=A0.ldlt().solve(Q0);
+    Beta_1_2Bdip=A1.ldlt().solve(Q1);
 
     Beta_01_2Bdip=Beta_0_2Bdip(0);
     Beta_02_2Bdip=Beta_0_2Bdip(1);

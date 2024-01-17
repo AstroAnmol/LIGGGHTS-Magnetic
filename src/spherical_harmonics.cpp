@@ -94,6 +94,12 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         Am.block(L,0,L,L)=Gamma_m;
         Am.block(L,L,L,L)=X;
 
+        // // std::cout << "Here is the matrix A1:\n" << Am << std::endl;
+        // Eigen::EigenSolver<Eigen::MatrixXd> eigensolver(Am);
+        // if (eigensolver.info() != Eigen::Success) {std::cout << "failed eigen" << std::endl;};
+        // std::cout << "The eigenvalues of A are:\n" << eigensolver.eigenvalues() << std::endl;
+        // std::cout << "Here's a matrix whose columns are eigenvectors of A \n";
+
         //qm vector
         Eigen::VectorXd qm(L);
         qm=Eigen::VectorXd::Zero(L);
@@ -112,7 +118,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
         
-        Beta_m=Am.colPivHouseholderQr().solve(Qm);
+        Beta_m=Am.ldlt().solve(Qm);
         if (m==0){
             Beta1_0=Beta_m.block(0,0,L,1);
             Beta2_0=Beta_m.block(L,0,L,1);
@@ -147,8 +153,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
     Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
 
-    Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
-    Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
+    Beta_0_2Bdip=A0.ldlt().solve(Q0);
+    Beta_1_2Bdip=A1.ldlt().solve(Q1);
 
     Beta_01_2Bdip=Beta_0_2Bdip(0);
     Beta_02_2Bdip=Beta_0_2Bdip(1);
@@ -195,10 +201,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         return fz_int(th);
     };
 
-    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-9, &x_error)*mu0*a*a;
+    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 3, 1e-9, &x_error)*mu0*a*a;
     // std::cout<<"x error "<<x_error<<std::endl<<std::endl;
 
-    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-9, &z_error)*mu0*a*a;
+    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 3, 1e-9, &z_error)*mu0*a*a;
     // std::cout<<"z error "<<z_error<<std::endl<<std::endl;
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
