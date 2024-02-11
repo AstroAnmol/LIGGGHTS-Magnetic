@@ -1,4 +1,4 @@
-// #include <iostream>
+#include <iostream>
 #include <cmath>
 #include "spherical_harmonics.h" 
 #include <Eigen/Dense>
@@ -112,7 +112,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         //solve linear system
         Eigen::VectorXd Beta_m(2*L);
         
-        Beta_m=Am.ldlt().solve(Qm);
+        Beta_m=Am.colPivHouseholderQr().solve(Qm);
         if (m==0){
             Beta1_0=Beta_m.block(0,0,L,1);
             Beta2_0=Beta_m.block(L,0,L,1);
@@ -147,8 +147,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
     Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
 
-    Beta_0_2Bdip=A0.ldlt().solve(Q0);
-    Beta_1_2Bdip=A1.ldlt().solve(Q1);
+    Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
+    Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
 
     Beta_01_2Bdip=Beta_0_2Bdip(0);
     Beta_02_2Bdip=Beta_0_2Bdip(1);
@@ -164,21 +164,37 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     Mj_2Bdip= (Beta_02_2Bdip*z_cap + Beta_12_2Bdip*x_cap)*(4*M_PI*a*a*a);
 
     double mir, mjr, mumu;
-    mir=Mi_2Bdip.dot(SEP)/sep;
-    mjr=Mj_2Bdip.dot(SEP)/sep;
-    mumu = Mi_2Bdip.dot(Mj_2Bdip);
+    // mir=Mi_2Bdip.dot(SEP)/sep;
+    // mjr=Mj_2Bdip.dot(SEP)/sep;
+    // mumu = Mi_2Bdip.dot(Mj_2Bdip);
+
+    mir=M_i.dot(SEP)/sep;
+    mjr=M_j.dot(SEP)/sep;
+    mumu = M_i.dot(M_j);
 
     double K = 3e-7/sep_sq/sep_sq;
     
-    F_dip2B[0] = K*(mir*Mj_2Bdip[0]+mjr*Mi_2Bdip[0]+(mumu-5*mjr*mir)*SEP[0]/sep);
-    F_dip2B[1] = K*(mir*Mj_2Bdip[1]+mjr*Mi_2Bdip[1]+(mumu-5*mjr*mir)*SEP[1]/sep);
-    F_dip2B[2] = K*(mir*Mj_2Bdip[2]+mjr*Mi_2Bdip[2]+(mumu-5*mjr*mir)*SEP[2]/sep);
+    // F_dip2B[0] = K*(mir*Mj_2Bdip[0]+mjr*Mi_2Bdip[0]+(mumu-5*mjr*mir)*SEP[0]/sep);
+    // F_dip2B[1] = K*(mir*Mj_2Bdip[1]+mjr*Mi_2Bdip[1]+(mumu-5*mjr*mir)*SEP[1]/sep);
+    // F_dip2B[2] = K*(mir*Mj_2Bdip[2]+mjr*Mi_2Bdip[2]+(mumu-5*mjr*mir)*SEP[2]/sep);
+
+    F_dip2B[0] = K*(mir*M_j[0]+mjr*M_i[0]+(mumu-5*mjr*mir)*SEP[0]/sep);
+    F_dip2B[1] = K*(mir*M_j[1]+mjr*M_i[1]+(mumu-5*mjr*mir)*SEP[1]/sep);
+    F_dip2B[2] = K*(mir*M_j[2]+mjr*M_i[2]+(mumu-5*mjr*mir)*SEP[2]/sep);
+
+    // std::cout<<"Beta_01"<<Beta1_0[0]<<std::endl;
+    // std::cout<<"Beta_02"<<Beta2_0[0]<<std::endl;
 
     Beta1_0[0]=Beta1_0[0] + Beta_01_dip - Beta_01_2Bdip;
     Beta2_0[0]=Beta2_0[0] + Beta_02_dip - Beta_02_2Bdip;
     Beta1_1[0]=Beta1_1[0] + Beta_11_dip - Beta_11_2Bdip;
     Beta2_1[0]=Beta2_1[0] + Beta_12_dip - Beta_12_2Bdip;
 
+    // std::cout<<"Beta_01_dip"<<Beta_01_dip<<std::endl;
+    // std::cout<<"Beta_01_2Bdip"<<Beta_01_2Bdip<<std::endl;
+    // std::cout<<"Beta_02_dip"<<Beta_02_dip<<std::endl;
+    // std::cout<<"Beta_02_2Bdip"<<Beta_02_2Bdip<<std::endl;
+    // std::cout<<"F_dip2B"<<F_dip2B.transpose()<<std::endl;
 
     //////////////////////////////////////////////////
     // Quadrature implementation
@@ -202,6 +218,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     // std::cout<<"z error "<<z_error<<std::endl<<std::endl;
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
+
+    // std::cout<<"F_act"<<F_act_coord.transpose()<<std::endl;
 }
 
 /////////////////////////////////////////
