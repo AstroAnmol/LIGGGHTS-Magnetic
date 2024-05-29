@@ -495,6 +495,7 @@ Eigen::Vector3d spherical_harmonics::mag_UVW(double r, double theta){
     mag_U=mag_W*std::sin(theta);
     
     mag_UVW_res << mag_U, mag_V, mag_W;
+    return mag_UVW_res;
 }
 
 // double spherical_harmonics::mag_U(double r, double theta){

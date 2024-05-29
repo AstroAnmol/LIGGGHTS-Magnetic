@@ -33,8 +33,8 @@ class spherical_harmonics{
         // double mag_C(double r, double theta);
 
         Eigen::Vector2d mag_PQ(double r, double theta);
-        double mag_P(double r, double theta);
-        double mag_Q(double r, double theta);
+        // double mag_P(double r, double theta);
+        // double mag_Q(double r, double theta);
 
         Eigen::Vector3d mag_UVW(double r, double theta);
         // double mag_U(double r, double theta);
