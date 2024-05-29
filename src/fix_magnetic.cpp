@@ -324,9 +324,9 @@ void FixMagnetic::post_force(int vflag)
           mjr=mu_j_vector.dot(SEP)/sep;
           mumu = mu_i_vector.dot(mu_j_vector);
           
-          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP[0]/sep);
-          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP[1]/sep);
-          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP[2]/sep);
+          // f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP[0]/sep);
+          // f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP[1]/sep);
+          // f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP[2]/sep);
         }
       }
     }
@@ -353,7 +353,7 @@ void FixMagnetic::post_force(int vflag)
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
-          if (sep/rad[i] < 4.5){
+          if (sep/rad[i] < 100){
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
 
@@ -362,13 +362,13 @@ void FixMagnetic::post_force(int vflag)
             Eigen::Vector3d F_2B;
             F_2B=particle_i_j.get_force_actual_coord();
 
-            Eigen::Vector3d F_dip2B_sph;
-            F_dip2B_sph=particle_i_j.get_force_2B_corrections();
+            // Eigen::Vector3d F_dip2B_sph;
+            // F_dip2B_sph=particle_i_j.get_force_2B_corrections();
 
             // add the spherical harmonics component and subtract the far-field affect (MDM)
-            f[i][0] += F_2B[0] - F_dip2B_sph[0];
-            f[i][1] += F_2B[1] - F_dip2B_sph[1];
-            f[i][2] += F_2B[2] - F_dip2B_sph[2];
+            f[i][0] += F_2B[0] ;//- F_dip2B_sph[0];
+            f[i][1] += F_2B[1] ;//- F_dip2B_sph[1];
+            f[i][2] += F_2B[2] ;//- F_dip2B_sph[2];
           }
         }
       }

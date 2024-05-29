@@ -23,9 +23,9 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     M_j=M_j_vec;
 
     if (susc<4){
-        L=20;}
+        L=10;}
     else if (susc>=4 && susc<7){
-        L=30;}
+        L=20;}
     else if (susc>=7 && susc<12){
         L=40;}
     else if (susc>=12 && susc<20){

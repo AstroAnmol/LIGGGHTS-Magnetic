@@ -260,40 +260,41 @@ double spherical_harmonics::nchoosek(int n, int k){
 ////////////////////////////////////////
 
 double spherical_harmonics::fx_int(double theta){
-    //-pi/4 (4 C P+3 C U+A W-(B (4 P+U)+A (4 Q+V)) Cos[theta]+(4 B Q-A (4 P+U)+B V+C W) Sin[theta]) 
+    //-pi/4 (4 C P+3 C U+A W-(B (4 P+U)+A (4 Q+V)) Cos[theta]+(4 B Q-A (4 P+U)+B V+C W) Sin[theta])
+    double A,B,C,P,Q,U,V,W;
+    A=mag_ABC(a,theta)[0];
+    B=mag_ABC(a,theta)[1];
+    C=mag_ABC(a,theta)[2];
+    P=mag_PQ(a,theta)[0];
+    Q=mag_PQ(a,theta)[1];
+    U=mag_UVW(a,theta)[0];
+    V=mag_UVW(a,theta)[1];
+    W=mag_UVW(a,theta)[2];
+
     double term1, term2, term3, res;
-    term1 = 4*mag_C(a,theta)*mag_P(a,theta)+3*mag_C(a,theta)*mag_U(a,theta)+mag_A(a,theta)*mag_W(a,theta);
-    term2 = mag_B(a,theta)*(4*mag_P(a,theta)+mag_U(a,theta))+mag_A(a,theta)*(4*mag_Q(a,theta)+mag_V(a,theta));
-    term3 = 4*mag_B(a,theta)*mag_Q(a,theta)-mag_A(a,theta)*(4*mag_P(a,theta)+mag_U(a,theta))+mag_B(a,theta)*mag_V(a,theta)+mag_C(a,theta)*mag_W(a,theta);
+    term1 = 4*C*P+3*C*U+A*W;
+    term2 = B*(4*P+U)+A*(4*Q+V);
+    term3 = 4*B*Q-A*(4*P+U)+B*V+C*W;
 
     res = -M_PI_4*(term1 - term2*std::cos(theta) + term3*std::sin(theta))*sin(theta);
     return res*a*a;
 }
 
 double spherical_harmonics::fz_int(double theta){
-    //pi/8 ((4 A*A-4 B*B-4 C*C+8 P*P-8 Q*Q+8 P U+3 U*U-8 Q V-3 V*V-W*W) Cos[theta]-2 (4 A B+8 P Q+4 Q U+4 P V+3 U V) Sin[theta]) 
-    double mag_A_sq, mag_B_sq, mag_C_sq, mag_P_sq, mag_Q_sq, mag_U_sq, mag_V_sq, mag_W_sq;
-    mag_A_sq=mag_A(a,theta)*mag_A(a,theta);
-    mag_B_sq=mag_B(a,theta)*mag_B(a,theta);
-    mag_C_sq=mag_C(a,theta)*mag_C(a,theta);
-    mag_P_sq=mag_P(a,theta)*mag_P(a,theta);
-    mag_Q_sq=mag_Q(a,theta)*mag_Q(a,theta);
-    mag_U_sq=mag_U(a,theta)*mag_U(a,theta);
-    mag_V_sq=mag_V(a,theta)*mag_V(a,theta);
-    mag_W_sq=mag_W(a,theta)*mag_W(a,theta);
-    //
-    double mag_PU, mag_QV, mag_AB, mag_PQ, mag_QU, mag_PV, mag_UV;
-    mag_PU=mag_P(a,theta)*mag_U(a,theta);
-    mag_QV=mag_Q(a,theta)*mag_V(a,theta);
-    mag_AB=mag_A(a,theta)*mag_B(a,theta);
-    mag_PQ=mag_P(a,theta)*mag_Q(a,theta);
-    mag_QU=mag_Q(a,theta)*mag_U(a,theta);
-    mag_PV=mag_P(a,theta)*mag_V(a,theta);
-    mag_UV=mag_U(a,theta)*mag_V(a,theta);
+    //pi/8 ((4 A*A-4 B*B-4 C*C+8 P*P-8 Q*Q+8 P U+3 U*U-8 Q V-3 V*V-W*W) Cos[theta]-2 (4 A B+8 P Q+4 Q U+4 P V+3 U V) Sin[theta])
+    double A,B,C,P,Q,U,V,W;
+    A=mag_ABC(a,theta)[0];
+    B=mag_ABC(a,theta)[1];
+    C=mag_ABC(a,theta)[2];
+    P=mag_PQ(a,theta)[0];
+    Q=mag_PQ(a,theta)[1];
+    U=mag_UVW(a,theta)[0];
+    V=mag_UVW(a,theta)[1];
+    W=mag_UVW(a,theta)[2];
     //
     double term2, term3, res;
-    term2 = 4*mag_A_sq-4*mag_B_sq-4*mag_C_sq+8*mag_P_sq-8*mag_Q_sq+8*mag_PU+3*mag_U_sq-8*mag_QV-3*mag_V_sq-mag_W_sq;
-    term3 = 2*(4*mag_AB+8*mag_PQ+4*mag_QU+4*mag_PV+3*mag_UV);
+    term2 = 4*A*A-4*B*B-4*C*C+8*P*P-8*Q*Q+8*P*U+3*U*U-8*Q*V-3*V*V-W*W;
+    term3 = 2*(4*A*B+8*P*Q+4*Q*U+4*P*V+3*U*V);
     res = (M_PI/8)*(term2*std::cos(theta) - term3*std::sin(theta))*std::sin(theta);
     return res*a*a;
 }
@@ -303,141 +304,216 @@ double spherical_harmonics::fz_int(double theta){
 // MAXWELL STRESS TENSOR FUNCTIONS
 ////////////////////////////////////////
 
-double spherical_harmonics::mag_A(double r, double theta){
+Eigen::Vector3d spherical_harmonics::mag_ABC(double r, double theta){
+    Eigen::Vector3d mag_ABC_res;
     double mag_A_res=0;
+    double mag_B_res=0;
+    double mag_C_res=0;
     for (int l = 1; l < L+1; l++){
         double Hrs1=0;
+        double Hths1=0;
+        double Hphs1=0;
         for (int s = 1; s < L+1; s++){
             double Psm=lpmn_cos(1, s, theta);
-            double ls_choose_sm=nchoosek(l+s, s+1);
-            double r_pow_s_1=std::pow(r/a, (s-1));
-            double sep_pow=std::pow(sep/a, l+s+1);
-            double minus_one_pow=std::pow(-1, s+1);
-            double r_pow_times_Psm=r_pow_s_1*Psm;
-                
-            double additional=(minus_one_pow)*s*r_pow_times_Psm/(sep_pow);
-            Hrs1=Hrs1 + additional*(ls_choose_sm);
-        }
-        double Plm=lpmn_cos(1, l, theta);
-        double r_pow_l2=std::pow(r/a, l+2);
-        mag_A_res=mag_A_res + ((l+1)*Beta1_1[l-1]*(Plm/r_pow_l2) - Beta2_1[l-1]*Hrs1);
-    }
-    mag_A_res=mag_A_res + H_perp*std::sin(theta);
-    return mag_A_res;
-}
-
-double spherical_harmonics::mag_P(double r, double theta){
-    double mag_P_res=0;
-    for (int l = 1; l < L+1; l++){
-        double Hrs0=0;
-        for (int s = 0; s < L+1; s++){
-            double Psm=lpmn_cos(0, s, theta);
-            double ls_choose_sm=nchoosek(l+s, s+0);
-            double r_pow_s_1=std::pow(r/a, (s-1));
-            double sep_pow=std::pow(sep/a, l+s+1);
-            double minus_one_pow=std::pow(-1, s+0);
-            double r_pow_times_Psm=r_pow_s_1*Psm;
-                
-            double additional=(minus_one_pow)*s*r_pow_times_Psm/(sep_pow);
-            Hrs0=Hrs0 + additional*(ls_choose_sm);
-        }
-        double Plm=lpmn_cos(0, l, theta);
-        double r_pow_l2=std::pow(r/a, l+2);
-        mag_P_res=mag_P_res + ((l+1)*Beta1_0[l-1]*(Plm/r_pow_l2) - Beta2_0[l-1]*Hrs0);
-    }
-    mag_P_res= mag_P_res + H_prll*std::cos(theta);
-    return mag_P_res;
-}
-
-
-double spherical_harmonics::mag_B(double r, double theta){
-    double mag_B_res=0;
-    for (int l = 1; l < L+1; l++){
-        double Hths1=0;
-        for (int s = 1; s < L+1; s++){
             double dPsm=d_lpmn_cos(1, s, theta);
             double ls_choose_sm=nchoosek(l+s, s+1);
             double r_pow_s_1=std::pow(r/a, (s-1));
             double sep_pow=std::pow(sep/a, l+s+1);
-            double minus_one_pow=std::pow(-1, s+1);
-            double r_pow_times_Psm=r_pow_s_1*dPsm;
-                
-            double additional=(minus_one_pow)*r_pow_times_Psm/(sep_pow);
-            Hths1=Hths1 + additional*(ls_choose_sm);
+            double minus_one_pow=std::pow(-1, s+1);   
+            double additional=(minus_one_pow)*r_pow_s_1*Psm/(sep_pow);
+            Hrs1=Hrs1 + additional*(ls_choose_sm)*s;
+            Hths1=Hths1 + minus_one_pow*r_pow_s_1*dPsm*(ls_choose_sm)/(sep_pow);
+            Hphs1=Hphs1 + additional*(ls_choose_sm)/std::sin(theta);
         }
+        double Plm=lpmn_cos(1, l, theta);
         double dPlm=d_lpmn_cos(1, l, theta);
         double r_pow_l2=std::pow(r/a, l+2);
+        mag_A_res=mag_A_res + ((l+1)*Beta1_1[l-1]*(Plm/r_pow_l2) - Beta2_1[l-1]*Hrs1);
         mag_B_res=mag_B_res - (Beta1_1[l-1]*(dPlm/r_pow_l2) + Beta2_1[l-1]*Hths1);
+        mag_C_res=mag_C_res + (Beta1_1[l-1]*(Plm/(r_pow_l2*std::sin(theta))) + Beta2_1[l-1]*Hphs1);
     }
+    mag_A_res=mag_A_res + H_perp*std::sin(theta);
     mag_B_res=mag_B_res + H_perp*std::cos(theta);
-    return mag_B_res;
+    mag_C_res=mag_C_res - H_perp;
+
+    mag_ABC_res << mag_A_res, mag_B_res, mag_C_res;
+
+    return mag_ABC_res;
 }
 
-
-double spherical_harmonics::mag_Q(double r, double theta){
+Eigen::Vector2d spherical_harmonics::mag_PQ(double r, double theta){
+    Eigen::Vector2d mag_PQ_res;
+    double mag_P_res=0;
     double mag_Q_res=0;
     for (int l = 1; l < L+1; l++){
+        double Hrs0=0;
         double Hths0=0;
         for (int s = 0; s < L+1; s++){
+            double Psm=lpmn_cos(0, s, theta);
             double dPsm=d_lpmn_cos(0, s, theta);
             double ls_choose_sm=nchoosek(l+s, s+0);
             double r_pow_s_1=std::pow(r/a, (s-1));
             double sep_pow=std::pow(sep/a, l+s+1);
             double minus_one_pow=std::pow(-1, s+0);
-            double r_pow_times_Psm=r_pow_s_1*dPsm;
-                
-            double additional=(minus_one_pow)*r_pow_times_Psm/(sep_pow);
-            Hths0=Hths0 + additional*(ls_choose_sm);
+
+            Hrs0=Hrs0 + (minus_one_pow)*s*r_pow_s_1*Psm*(ls_choose_sm)/(sep_pow);
+            Hths0=Hths0 + (minus_one_pow)*r_pow_s_1*dPsm*(ls_choose_sm)/(sep_pow);
         }
+        double Plm=lpmn_cos(0, l, theta);
         double dPlm=d_lpmn_cos(0, l, theta);
         double r_pow_l2=std::pow(r/a, l+2);
+        mag_P_res=mag_P_res + ((l+1)*Beta1_0[l-1]*(Plm/r_pow_l2) - Beta2_0[l-1]*Hrs0);
         mag_Q_res=mag_Q_res - (Beta1_0[l-1]*(dPlm/r_pow_l2) + Beta2_0[l-1]*Hths0);
     }
+    mag_P_res= mag_P_res + H_prll*std::cos(theta);
     mag_Q_res= mag_Q_res - H_prll*std::sin(theta);
-    return mag_Q_res;
+
+    mag_PQ_res << mag_P_res, mag_Q_res;
+    return mag_PQ_res;
 }
 
-
-double spherical_harmonics::mag_C(double r, double theta){
-    double mag_C_res=0;
-    for (int l = 1; l < L+1; l++){
-        double Hphs1=0;
-        for (int s = 1; s < L+1; s++){
-            double Psm=lpmn_cos(1, s, theta);
-            double ls_choose_sm=nchoosek(l+s, s+1);
-            double r_pow_s_1=std::pow(r/a, (s-1));
-            double sep_pow=std::pow(sep/a, l+s+1);
-            double minus_one_pow=std::pow(-1, s+1);
-            double r_pow_times_Psm=r_pow_s_1*Psm;
+// double spherical_harmonics::mag_P(double r, double theta){
+//     double mag_P_res=0;
+//     for (int l = 1; l < L+1; l++){
+//         double Hrs0=0;
+//         for (int s = 0; s < L+1; s++){
+//             double Psm=lpmn_cos(0, s, theta);
+//             double ls_choose_sm=nchoosek(l+s, s+0);
+//             double r_pow_s_1=std::pow(r/a, (s-1));
+//             double sep_pow=std::pow(sep/a, l+s+1);
+//             double minus_one_pow=std::pow(-1, s+0);
+//             double r_pow_times_Psm=r_pow_s_1*Psm;
                 
-            double additional=(minus_one_pow)*r_pow_times_Psm/(sep_pow);
-            Hphs1=Hphs1 + additional*(ls_choose_sm)/std::sin(theta);
-        }
-        double Plm=lpmn_cos(1, l, theta);
-        double r_pow_l2=std::pow(r/a, l+2);
-        mag_C_res=mag_C_res + (Beta1_1[l-1]*(Plm/(r_pow_l2*std::sin(theta))) + Beta2_1[l-1]*Hphs1);
-    }
-    mag_C_res=mag_C_res - H_perp;
-    return mag_C_res;
+//             double additional=(minus_one_pow)*s*r_pow_times_Psm/(sep_pow);
+//             Hrs0=Hrs0 + additional*(ls_choose_sm);
+//         }
+//         double Plm=lpmn_cos(0, l, theta);
+//         double r_pow_l2=std::pow(r/a, l+2);
+//         mag_P_res=mag_P_res + ((l+1)*Beta1_0[l-1]*(Plm/r_pow_l2) - Beta2_0[l-1]*Hrs0);
+//     }
+//     mag_P_res= mag_P_res + H_prll*std::cos(theta);
+//     return mag_P_res;
+// }
+
+// double spherical_harmonics::mag_Q(double r, double theta){
+//     double mag_Q_res=0;
+//     for (int l = 1; l < L+1; l++){
+//         double Hths0=0;
+//         for (int s = 0; s < L+1; s++){
+//             double dPsm=d_lpmn_cos(0, s, theta);
+//             double ls_choose_sm=nchoosek(l+s, s+0);
+//             double r_pow_s_1=std::pow(r/a, (s-1));
+//             double sep_pow=std::pow(sep/a, l+s+1);
+//             double minus_one_pow=std::pow(-1, s+0);
+//             double r_pow_times_Psm=r_pow_s_1*dPsm;
+                
+//             double additional=(minus_one_pow)*r_pow_times_Psm/(sep_pow);
+//             Hths0=Hths0 + additional*(ls_choose_sm);
+//         }
+//         double dPlm=d_lpmn_cos(0, l, theta);
+//         double r_pow_l2=std::pow(r/a, l+2);
+//         mag_Q_res=mag_Q_res - (Beta1_0[l-1]*(dPlm/r_pow_l2) + Beta2_0[l-1]*Hths0);
+//     }
+//     mag_Q_res= mag_Q_res - H_prll*std::sin(theta);
+//     return mag_Q_res;
+// }
+
+// double spherical_harmonics::mag_A(double r, double theta){
+//     double mag_A_res=0;
+//     for (int l = 1; l < L+1; l++){
+//         double Hrs1=0;
+//         for (int s = 1; s < L+1; s++){
+//             double Psm=lpmn_cos(1, s, theta);
+//             double ls_choose_sm=nchoosek(l+s, s+1);
+//             double r_pow_s_1=std::pow(r/a, (s-1));
+//             double sep_pow=std::pow(sep/a, l+s+1);
+//             double minus_one_pow=std::pow(-1, s+1);
+//             double r_pow_times_Psm=r_pow_s_1*Psm;
+                
+//             double additional=(minus_one_pow)*s*r_pow_times_Psm/(sep_pow);
+//             Hrs1=Hrs1 + additional*(ls_choose_sm);
+//         }
+//         double Plm=lpmn_cos(1, l, theta);
+//         double r_pow_l2=std::pow(r/a, l+2);
+//         mag_A_res=mag_A_res + ((l+1)*Beta1_1[l-1]*(Plm/r_pow_l2) - Beta2_1[l-1]*Hrs1);
+//     }
+//     mag_A_res=mag_A_res + H_perp*std::sin(theta);
+//     return mag_A_res;
+// }
+
+// double spherical_harmonics::mag_B(double r, double theta){
+//     double mag_B_res=0;
+//     for (int l = 1; l < L+1; l++){
+//         double Hths1=0;
+//         for (int s = 1; s < L+1; s++){
+//             double dPsm=d_lpmn_cos(1, s, theta);
+//             double ls_choose_sm=nchoosek(l+s, s+1);
+//             double r_pow_s_1=std::pow(r/a, (s-1));
+//             double sep_pow=std::pow(sep/a, l+s+1);
+//             double minus_one_pow=std::pow(-1, s+1);
+//             double r_pow_times_Psm=r_pow_s_1*dPsm;
+                
+//             double additional=(minus_one_pow)*r_pow_times_Psm/(sep_pow);
+//             Hths1=Hths1 + additional*(ls_choose_sm);
+//         }
+//         double dPlm=d_lpmn_cos(1, l, theta);
+//         double r_pow_l2=std::pow(r/a, l+2);
+//         mag_B_res=mag_B_res - (Beta1_1[l-1]*(dPlm/r_pow_l2) + Beta2_1[l-1]*Hths1);
+//     }
+//     mag_B_res=mag_B_res + H_perp*std::cos(theta);
+//     return mag_B_res;
+// }
+
+// double spherical_harmonics::mag_C(double r, double theta){
+//     double mag_C_res=0;
+//     for (int l = 1; l < L+1; l++){
+//         double Hphs1=0;
+//         for (int s = 1; s < L+1; s++){
+//             double Psm=lpmn_cos(1, s, theta);
+//             double ls_choose_sm=nchoosek(l+s, s+1);
+//             double r_pow_s_1=std::pow(r/a, (s-1));
+//             double sep_pow=std::pow(sep/a, l+s+1);
+//             double minus_one_pow=std::pow(-1, s+1);
+//             double r_pow_times_Psm=r_pow_s_1*Psm;
+                
+//             double additional=(minus_one_pow)*r_pow_times_Psm/(sep_pow);
+//             Hphs1=Hphs1 + additional*(ls_choose_sm)/std::sin(theta);
+//         }
+//         double Plm=lpmn_cos(1, l, theta);
+//         double r_pow_l2=std::pow(r/a, l+2);
+//         mag_C_res=mag_C_res + (Beta1_1[l-1]*(Plm/(r_pow_l2*std::sin(theta))) + Beta2_1[l-1]*Hphs1);
+//     }
+//     mag_C_res=mag_C_res - H_perp;
+//     return mag_C_res;
+// }
+
+Eigen::Vector3d spherical_harmonics::mag_UVW(double r, double theta){
+    double mag_U, mag_V, mag_W;
+    Eigen::Vector3d mag_UVW_res;
+    mag_W=(M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a));
+    mag_V=mag_W*std::cos(theta);
+    mag_U=mag_W*std::sin(theta);
+    
+    mag_UVW_res << mag_U, mag_V, mag_W;
 }
 
-double spherical_harmonics::mag_U(double r, double theta){
-    double mag_U_res;
-    mag_U_res = (M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a))*std::sin(theta);
-    return mag_U_res;
-}
+// double spherical_harmonics::mag_U(double r, double theta){
+//     double mag_U_res;
+//     mag_U_res = (M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a))*std::sin(theta);
+//     return mag_U_res;
+// }
 
-double spherical_harmonics::mag_V(double r, double theta){
-    double mag_V_res;
-    mag_V_res = (M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a))*std::cos(theta);
-    return mag_V_res;
-}
+// double spherical_harmonics::mag_V(double r, double theta){
+//     double mag_V_res;
+//     mag_V_res = (M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a))*std::cos(theta);
+//     return mag_V_res;
+// }
 
-double spherical_harmonics::mag_W(double r, double theta){
-    double mag_W_res;
-    mag_W_res = (M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a));
-    return mag_W_res;
-}
+// double spherical_harmonics::mag_W(double r, double theta){
+//     double mag_W_res;
+//     mag_W_res = (M_i.dot(y_cap)/(4*M_PI*a*a*a))*(lpmn_cos(1,1, theta)/(r/a*r/a));
+//     return mag_W_res;
+// }
 
 /////////////////////////////////////////////////////////
 //define associate legendre functions for cos(theta)

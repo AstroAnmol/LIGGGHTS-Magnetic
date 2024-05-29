@@ -27,14 +27,19 @@ class spherical_harmonics{
         double lpmn_cos(int n, int m, double theta);
         double d_lpmn_cos(int n, int m, double theta);
         // Maxwell stress tensor functions
-        double mag_A(double r, double theta);
-        double mag_B(double r, double theta);
-        double mag_C(double r, double theta);
+        Eigen::Vector3d mag_ABC(double r, double theta);
+        // double mag_A(double r, double theta);
+        // double mag_B(double r, double theta);
+        // double mag_C(double r, double theta);
+
+        Eigen::Vector2d mag_PQ(double r, double theta);
         double mag_P(double r, double theta);
         double mag_Q(double r, double theta);
-        double mag_U(double r, double theta);
-        double mag_V(double r, double theta);
-        double mag_W(double r, double theta);
+
+        Eigen::Vector3d mag_UVW(double r, double theta);
+        // double mag_U(double r, double theta);
+        // double mag_V(double r, double theta);
+        // double mag_W(double r, double theta);
         // force integrands only theta
         double fx_int(double theta);
         double fz_int(double theta);
