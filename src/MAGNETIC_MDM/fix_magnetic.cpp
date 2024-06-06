@@ -38,9 +38,6 @@
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
 #include <Eigen/Dense>
-// #include <eigen-3.4.0/Eigen/Core>
-// #include <iostream>
-// #include <fstream>
 // #include "spherical_harmonics.h"
 #include <math.h>
 #include <string.h>
@@ -243,8 +240,6 @@ void FixMagnetic::post_force(int vflag)
   int nghost = atom->nghost;
   int *type = atom->type;
 
-  // Eigen::initParallel();
-
   // reallocate hfield array if necessary
   Eigen::Vector3d SEP;
 
@@ -295,12 +290,12 @@ void FixMagnetic::post_force(int vflag)
 
         mumu = mu_i_vector.dot(mu_i_vector);
 
-        if (mumu > C*C*4){
-          muR=sqrt(C*C*4/mumu);
-          mu[i][0]=mu_i_vector[0]*muR;
-          mu[i][1]=mu_i_vector[1]*muR;
-          mu[i][2]=mu_i_vector[2]*muR;
-        }
+        // if (mumu > C*C*4){
+        //   muR=sqrt(C*C*4/mumu);
+        //   mu[i][0]=mu_i_vector[0]*muR;
+        //   mu[i][1]=mu_i_vector[1]*muR;
+        //   mu[i][2]=mu_i_vector[2]*muR;
+        // }
       }
     }
 

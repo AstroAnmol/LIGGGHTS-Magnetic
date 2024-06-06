@@ -290,12 +290,12 @@ void FixMagnetic::post_force(int vflag)
 
         mumu = mu_i_vector.dot(mu_i_vector);
 
-        if (mumu > C*C*4){
-          muR=sqrt(C*C*4/mumu);
-          mu[i][0]=mu_i_vector[0]*muR;
-          mu[i][1]=mu_i_vector[1]*muR;
-          mu[i][2]=mu_i_vector[2]*muR;
-        }
+        // if (mumu > C*C*4){
+        //   muR=sqrt(C*C*4/mumu);
+        //   mu[i][0]=mu_i_vector[0]*muR;
+        //   mu[i][1]=mu_i_vector[1]*muR;
+        //   mu[i][2]=mu_i_vector[2]*muR;
+        // }
       }
     }
 
@@ -353,7 +353,7 @@ void FixMagnetic::post_force(int vflag)
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
-          if (sep/rad[i] < 4.5){
+          if (sep/rad[i] < 3.5){
             Eigen::Vector3d H0;
             H0<<ex, ey, ez;
 

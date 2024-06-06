@@ -135,17 +135,17 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
 
     Eigen::Matrix2d A0(2, 2), A1(2, 2);
 
-    A0<<    mu/mu0 + 2 , (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),
-            (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
+    A0<<    mu/mu0 + 2 , (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(1,3)/std::pow(c,3),
+            (-1)*(mu/mu0-1)*nchoosek(2,1)*std::pow(1,3)/std::pow(c,3),  mu/mu0 + 2;
 
-    A1<<    mu/mu0 + 2 , (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),
-            (mu/mu0-1)*nchoosek(2,2)*std::pow(a,3)/std::pow(sep,3),  mu/mu0 + 2;
+    A1<<    mu/mu0 + 2 , (mu/mu0-1)*nchoosek(2,2)*std::pow(1,3)/std::pow(c,3),
+            (mu/mu0-1)*nchoosek(2,2)*std::pow(1,3)/std::pow(c,3),  mu/mu0 + 2;
     
     double Beta_01_2Bdip, Beta_02_2Bdip, Beta_11_2Bdip, Beta_12_2Bdip;
     
     Eigen::Vector2d Q0, Q1, Beta_0_2Bdip, Beta_1_2Bdip;
-    Q0 <<  -H_prll*std::pow(a,3)*(1-mu/mu0), -H_prll*std::pow(a,3)*(1-mu/mu0);
-    Q1 <<  H_perp*std::pow(a,3)*(1-mu/mu0), H_perp*std::pow(a,3)*(1-mu/mu0);
+    Q0 <<  -H_prll*std::pow(1,3)*(1-mu/mu0), -H_prll*std::pow(1,3)*(1-mu/mu0);
+    Q1 <<  H_perp*std::pow(1,3)*(1-mu/mu0), H_perp*std::pow(1,3)*(1-mu/mu0);
 
     Beta_0_2Bdip=A0.colPivHouseholderQr().solve(Q0);
     Beta_1_2Bdip=A1.colPivHouseholderQr().solve(Q1);
@@ -211,10 +211,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         return fz_int(th);
     };
 
-    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-9, &x_error)*mu0*a*a;
+    F[0] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fx_integrand, 0, M_PI, 5, 1e-9, &x_error)*mu0;
     // std::cout<<"x error "<<x_error<<std::endl<<std::endl;
 
-    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-9, &z_error)*mu0*a*a;
+    F[2] = boost::math::quadrature::gauss_kronrod<double, 61>::integrate(fz_integrand, 0, M_PI, 5, 1e-9, &z_error)*mu0;
     // std::cout<<"z error "<<z_error<<std::endl<<std::endl;
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
