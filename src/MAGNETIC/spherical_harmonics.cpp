@@ -211,10 +211,10 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
         return fz_int(th);
     };
 
-    F[0] = boost::math::quadrature::gauss_kronrod<double, 31>::integrate(fx_integrand, 0, M_PI, 5, 1e-9, &x_error)*mu0;
+    F[0] = boost::math::quadrature::gauss_kronrod<double, 15>::integrate(fx_integrand, 0, M_PI, 5, 1e-9, &x_error)*mu0;
     // std::cout<<"x error "<<x_error<<std::endl<<std::endl;
 
-    F[2] = boost::math::quadrature::gauss_kronrod<double, 31>::integrate(fz_integrand, 0, M_PI, 5, 1e-9, &z_error)*mu0;
+    F[2] = boost::math::quadrature::gauss_kronrod<double, 15>::integrate(fz_integrand, 0, M_PI, 5, 1e-9, &z_error)*mu0;
     // std::cout<<"z error "<<z_error<<std::endl<<std::endl;
 
     F_act_coord=F[0]*x_cap + F[1]*y_cap + F[2]*z_cap;
