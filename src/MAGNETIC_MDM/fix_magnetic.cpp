@@ -32,13 +32,17 @@
 
 -------------------------------------------------------------------------
     Contributing author and copyright for this file:
-    Thomas Leps
+    Anmol Sikka
     University of Maryland College Park
-    tjleps@gmail.com
-------------------------------------------------------------------------- */
+    anmolsikka09@gmail.com
+
+    Thanks for the contributinos by Thomas Leps
+------------------------------------------------------------------------- 
+    
+
+*/
 #include "fix_magnetic.h"
 #include <Eigen/Dense>
-// #include "spherical_harmonics.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -301,7 +305,12 @@ void FixMagnetic::post_force(int vflag)
         mu[i][1]=mu_i_vector[1];
         mu[i][2]=mu_i_vector[2];
 
-        mumu = mu_i_vector.dot(mu_i_vector);
+        ///////////////////////////////////////////////////////
+        // The commented section below was added by Thomas Leps
+        // Removed because it is not needed for the SI units based model
+        ///////////////////////////////////////////////////////
+
+        // mumu = mu_i_vector.dot(mu_i_vector);
 
         // if (mumu > C*C*4){
         //   muR=sqrt(C*C*4/mumu);

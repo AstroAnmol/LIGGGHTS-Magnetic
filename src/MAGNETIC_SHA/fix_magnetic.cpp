@@ -32,9 +32,11 @@
 
 -------------------------------------------------------------------------
     Contributing author and copyright for this file:
-    Thomas Leps
+    Anmol Sikka
     University of Maryland College Park
-    tjleps@gmail.com
+    anmolsikka09@gmail.com
+
+    Thanks for the contributinos by Thomas Leps
 ------------------------------------------------------------------------- */
 #include "fix_magnetic.h"
 #include <Eigen/Dense>

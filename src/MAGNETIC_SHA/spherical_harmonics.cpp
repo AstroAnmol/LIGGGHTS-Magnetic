@@ -1,10 +1,17 @@
-// #include <iostream>
+/* -------------------------------------------------------------------------
+    Contributing author and copyright for this file:
+    Anmol Sikka
+    University of Maryland College Park
+    anmolsikka09@gmail.com
+
+    Thanks for the contributinos by Thomas Leps
+------------------------------------------------------------------------- */
+
 #include <cmath>
 #include "spherical_harmonics.h" 
 #include <Eigen/Dense>
 #include <boost/math/special_functions/legendre.hpp>
 #include <boost/math/quadrature/gauss_kronrod.hpp>
-// #define EIGEN_DONT_PARALLELIZE
 
 #define __STDCPP_WANT_MATH_SPEC_FUNCS__
 
@@ -12,9 +19,6 @@
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
 
-
-    // Eigen::initParallel();
-    // variable assignment
     a=radius;
     susc=susceptibilty;
     H0=H0_vec;

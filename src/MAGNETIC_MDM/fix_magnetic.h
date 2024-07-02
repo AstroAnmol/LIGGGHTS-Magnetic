@@ -1,8 +1,7 @@
 /*
  * fix_magnetic.h
  *
- *  Created on: Jun 8, 2017
- *      Author: TJLeps
+ *      Author: ASikka
  */
 
 #ifdef FIX_CLASS

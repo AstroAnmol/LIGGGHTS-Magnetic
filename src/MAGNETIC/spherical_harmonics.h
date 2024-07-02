@@ -1,3 +1,9 @@
+/*
+ * spherical_harmonics.h
+ *
+ *      Author: ASikka
+ */
+
 #ifndef SPHERICAL_HARMONICS_H
 #define SPHERICAL_HARMONICS_H
 #include <cmath>
