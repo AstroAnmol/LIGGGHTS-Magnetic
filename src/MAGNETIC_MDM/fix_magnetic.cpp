@@ -356,55 +356,7 @@ void FixMagnetic::post_force(int vflag)
         }
       }
     }
-    // Spherical Harmonics
-    // for (ii = 0; ii < inum; ii++) {
-    //   i = ilist[ii];
-    //   // myfile<<"i: "<<i<<"\n";
-    //   if (mask[i] & groupbit) {
-    //     susc= susceptibility_[type[i]-1];
-    //     susc_eff=3*susc/(susc+3);
-    //     double C = susc_eff*rad[i]*rad[i]*rad[i]*p4/3;
-    //     Eigen::Vector3d mu_i_dipole;
-    //     mu_i_dipole<<C*ex, C*ey, C*ez;
-    //     jlist = firstneigh[i];
-    //     jnum = numneigh[i];
-    //     Eigen::Vector3d mu_i_vector;
-    //     mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
-
-    //     for (jj = 0; jj<jnum; jj++)  {
-    //       j =jlist[jj];
-    //       j &= NEIGHMASK;
-
-    //       Eigen::Vector3d mu_j_vector;
-    //       mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
-          
-    //       SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-    //       sep = SEP.norm();
-    //       if (sep/rad[i] < 4.5){
-    //         Eigen::Vector3d H0;
-    //         H0<<ex, ey, ez;
-
-    //         spherical_harmonics particle_i_j(rad[i], susc, H0, SEP, mu_i_vector,mu_j_vector);
-            
-    //         Eigen::Vector3d F_2B;
-    //         F_2B=particle_i_j.get_force_actual_coord();
-
-    //         Eigen::Vector3d F_dip2B_sph;
-    //         F_dip2B_sph=particle_i_j.get_force_2B_corrections();
-
-    //         // add the spherical harmonics component and subtract the far-field affect (MDM)
-    //         f[i][0] += F_2B[0] - F_dip2B_sph[0];
-    //         f[i][1] += F_2B[1] - F_dip2B_sph[1];
-    //         f[i][2] += F_2B[2] - F_dip2B_sph[2];
-    //       }
-    //     }
-    //   }
-    // }
-    // myfile<<"------------------------------------------------ \n";
-    // myfile<<"ONE RUN COMPLETE \n";
-    // myfile<<"------------------------------------------------ \n";
   }
-  // myfile.close();
 }
 
 /* ---------------------------------------------------------------------- */
