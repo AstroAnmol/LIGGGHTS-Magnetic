@@ -227,7 +227,7 @@ void FixMagnetic::post_force(int vflag)
 { 
   int i,j,ii,jj,inum,jnum;
   int *ilist,*jlist,*numneigh,**firstneigh,*slist;
-  double sep_sq, sep, mir, mjr, mumu, A, K, muR, susc, susc_eff;
+  double sep_sq, sep, rad_sum, mir, mjr, mumu, A, K, muR, susc, susc_eff;
   double *rad = atom->radius;
   double **x = atom->x;
   double **mu = atom->mu;
@@ -275,6 +275,19 @@ void FixMagnetic::post_force(int vflag)
           j &= NEIGHMASK;
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
+          
+          ////////////////////////////////////////////////
+          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+          // IS LOWER THAN THE SUM OF RADII.
+          // CHANGE IT TO SUM OF RADII IF TRUE.
+          ////////////////////////////////////////////////
+          rad_sum = rad[i] + rad[j];
+          if (sep/rad_sum<1)
+          {
+            SEP=(SEP/sep)*rad_sum;
+            sep=rad_sum;
+          }
+          
           A = C/p4/sep/sep/sep;
           
           Eigen::Vector3d mu_j_vector;
@@ -316,6 +329,19 @@ void FixMagnetic::post_force(int vflag)
           
           SEP << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
           sep = SEP.norm();
+
+          ////////////////////////////////////////////////
+          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+          // IS LOWER THAN THE SUM OF RADII.
+          // CHANGE IT TO SUM OF RADII IF TRUE.
+          ////////////////////////////////////////////////
+          rad_sum = rad[i] + rad[j];
+          if (sep/rad_sum<1)
+          {
+            SEP=(SEP/sep)*rad_sum;
+            sep=rad_sum;
+          }
+
           sep_sq = sep*sep;
 
           K = 3e-7/sep_sq/sep_sq;
