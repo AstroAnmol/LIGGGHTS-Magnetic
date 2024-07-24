@@ -306,7 +306,7 @@ void FixMagnetic::post_force(int vflag)
           double C_j = susc_eff_j*rad[j]*rad[j]*rad[j]*p4/3;
 
           // Define H_vec part
-          H_vec.segment(jj+3,3)=H0;
+          H_vec.segment((jj+1)*3,3)=H0;
           
           // Define diagonal part of the matrix
           mom_mat(3*(jj+1),3*(jj+1))=1/C_j;
@@ -338,8 +338,8 @@ void FixMagnetic::post_force(int vflag)
                        3*SEP_ij(1)*SEP_ij(0)/(p4*std::pow(sep_ij,5)), (3*SEP_ij(1)*SEP_ij(1)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) ), 3*SEP_ij(1)*SEP_ij(2)/(p4*std::pow(sep_ij,5)),
                        3*SEP_ij(2)*SEP_ij(0)/(p4*std::pow(sep_ij,5)), 3*SEP_ij(2)*SEP_ij(1)/(p4*std::pow(sep_ij,5)), (3*SEP_ij(2)*SEP_ij(2)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) );
         
-          mom_mat.block(0,jj+3,3,3)=-mom_mat_ij;
-          mom_mat.block(jj+3,0,3,3)=-mom_mat_ij;
+          mom_mat.block(0,(jj+1)*3,3,3)=-mom_mat_ij;
+          mom_mat.block((jj+1)*3,0,3,3)=-mom_mat_ij;
 
           // loop over remaining neighbors for other rows
           for (kk = jj+1; kk < jnum; kk++){
@@ -365,19 +365,19 @@ void FixMagnetic::post_force(int vflag)
                 sep_jk=rad_sum_jk;
             }
 
-            // i-j 3 X 3 matrix definition
+            // j-k 3 X 3 matrix definition
             Eigen::Matrix3d mom_mat_jk;
             mom_mat_jk<< (3*SEP_jk(0)*SEP_jk(0)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) ), 3*SEP_jk(0)*SEP_jk(1)/(p4*std::pow(sep_jk,5)), 3*SEP_jk(0)*SEP_jk(2)/(p4*std::pow(sep_jk,5)),
                         3*SEP_jk(1)*SEP_jk(0)/(p4*std::pow(sep_jk,5)), (3*SEP_jk(1)*SEP_jk(1)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) ), 3*SEP_jk(1)*SEP_jk(2)/(p4*std::pow(sep_jk,5)),
                         3*SEP_jk(2)*SEP_jk(0)/(p4*std::pow(sep_jk,5)), 3*SEP_jk(2)*SEP_jk(1)/(p4*std::pow(sep_jk,5)), (3*SEP_jk(2)*SEP_jk(2)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) );
         
-            mom_mat.block(jj+3,kk+3,3,3)=-mom_mat_jk;
-            mom_mat.block(kk+3,jj+3,3,3)=-mom_mat_jk;
+            mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
+            mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;
           }
         }
 
         //solving the linear system of equations
-        mom_vec=mom_mat.llt().solve(H_vec);
+        mom_vec=mom_mat.householderQr ().solve(H_vec);
 
         mu_i_vector=mom_vec.head(3);
 

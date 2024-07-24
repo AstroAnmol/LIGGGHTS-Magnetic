@@ -1,3 +1,12 @@
+/* -------------------------------------------------------------------------
+    Contributing author and copyright for this file:
+    Anmol Sikka
+    University of Maryland College Park
+    anmolsikka09@gmail.com
+
+    Thanks for the contributinos by Thomas Leps
+------------------------------------------------------------------------- */
+
 #include <iostream>
 #include <cmath>
 #include "spherical_harmonics.h" 
