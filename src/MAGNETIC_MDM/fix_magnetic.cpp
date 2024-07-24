@@ -379,7 +379,7 @@ void FixMagnetic::post_force(int vflag)
         }
 
         //solving the linear system of equations
-        mom_vec=mom_mat.householderQr ().solve(H_vec);
+        mom_vec=mom_mat.householderQr().solve(H_vec);
 
         mu_i_vector=mom_vec.head(3);
 
@@ -423,10 +423,12 @@ void FixMagnetic::post_force(int vflag)
           double mir=mu_i_vector.dot(SEP_ij)/sep_ij;
           double mjr=mu_j_vector.dot(SEP_ij)/sep_ij;
           double mumu = mu_i_vector.dot(mu_j_vector);
+
+          double K=3*mu0/p4/std::pow(sep_ij,4);
           
-          f[i][0] += (3*mu0/p4/std::pow(sep_ij,4))*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP_ij[0]/sep_ij);
-          f[i][1] += (3*mu0/p4/std::pow(sep_ij,4))*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP_ij[1]/sep_ij);
-          f[i][2] += (3*mu0/p4/std::pow(sep_ij,4))*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP_ij[2]/sep_ij);
+          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP_ij[0]/sep_ij);
+          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP_ij[1]/sep_ij);
+          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP_ij[2]/sep_ij);
         }
       }
     }
