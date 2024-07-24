@@ -331,12 +331,13 @@ void FixMagnetic::post_force(int vflag)
             SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
             sep_ij=rad_sum_ij;
           }
-
+          double p4_sep_ij_pow5_div_3=(p4*std::pow(sep_ij,5))/3;
+          double inv_p4_sep_ij_pow3=1/(p4*pow(sep_ij,3));
           // i-j 3 X 3 matrix definition
           Eigen::Matrix3d mom_mat_ij;
-          mom_mat_ij<< (3*SEP_ij(0)*SEP_ij(0)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) ), 3*SEP_ij(0)*SEP_ij(1)/(p4*std::pow(sep_ij,5)), 3*SEP_ij(0)*SEP_ij(2)/(p4*std::pow(sep_ij,5)),
-                       3*SEP_ij(1)*SEP_ij(0)/(p4*std::pow(sep_ij,5)), (3*SEP_ij(1)*SEP_ij(1)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) ), 3*SEP_ij(1)*SEP_ij(2)/(p4*std::pow(sep_ij,5)),
-                       3*SEP_ij(2)*SEP_ij(0)/(p4*std::pow(sep_ij,5)), 3*SEP_ij(2)*SEP_ij(1)/(p4*std::pow(sep_ij,5)), (3*SEP_ij(2)*SEP_ij(2)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) );
+          mom_mat_ij<< (SEP_ij(0)*SEP_ij(0)/p4_sep_ij_pow5_div_3 - inv_p4_sep_ij_pow3), SEP_ij(0)*SEP_ij(1)/p4_sep_ij_pow5_div_3, SEP_ij(0)*SEP_ij(2)/p4_sep_ij_pow5_div_3,
+                       SEP_ij(1)*SEP_ij(0)/p4_sep_ij_pow5_div_3, (SEP_ij(1)*SEP_ij(1)/p4_sep_ij_pow5_div_3 - inv_p4_sep_ij_pow3 ), SEP_ij(1)*SEP_ij(2)/p4_sep_ij_pow5_div_3,
+                       SEP_ij(2)*SEP_ij(0)/p4_sep_ij_pow5_div_3, SEP_ij(2)*SEP_ij(1)/p4_sep_ij_pow5_div_3, (SEP_ij(2)*SEP_ij(2)/p4_sep_ij_pow5_div_3 - inv_p4_sep_ij_pow3);
         
           mom_mat.block(0,(jj+1)*3,3,3)=-mom_mat_ij;
           mom_mat.block((jj+1)*3,0,3,3)=-mom_mat_ij;
@@ -364,12 +365,13 @@ void FixMagnetic::post_force(int vflag)
                 SEP_jk=(SEP_jk/sep_jk)*rad_sum_jk;
                 sep_jk=rad_sum_jk;
             }
-
+            double p4_sep_jk_pow5_div_3=(p4*std::pow(sep_jk,5))/3;
+            double inv_p4_sep_jk_pow3=1/(p4*pow(sep_jk,3));
             // j-k 3 X 3 matrix definition
             Eigen::Matrix3d mom_mat_jk;
-            mom_mat_jk<< (3*SEP_jk(0)*SEP_jk(0)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) ), 3*SEP_jk(0)*SEP_jk(1)/(p4*std::pow(sep_jk,5)), 3*SEP_jk(0)*SEP_jk(2)/(p4*std::pow(sep_jk,5)),
-                        3*SEP_jk(1)*SEP_jk(0)/(p4*std::pow(sep_jk,5)), (3*SEP_jk(1)*SEP_jk(1)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) ), 3*SEP_jk(1)*SEP_jk(2)/(p4*std::pow(sep_jk,5)),
-                        3*SEP_jk(2)*SEP_jk(0)/(p4*std::pow(sep_jk,5)), 3*SEP_jk(2)*SEP_jk(1)/(p4*std::pow(sep_jk,5)), (3*SEP_jk(2)*SEP_jk(2)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) );
+            mom_mat_jk<< (SEP_jk(0)*SEP_jk(0)/p4_sep_jk_pow5_div_3 - inv_p4_sep_jk_pow3 ), SEP_jk(0)*SEP_jk(1)/p4_sep_jk_pow5_div_3, SEP_jk(0)*SEP_jk(2)/p4_sep_jk_pow5_div_3,
+                        SEP_jk(1)*SEP_jk(0)/p4_sep_jk_pow5_div_3, (SEP_jk(1)*SEP_jk(1)/p4_sep_jk_pow5_div_3 - inv_p4_sep_jk_pow3 ), SEP_jk(1)*SEP_jk(2)/p4_sep_jk_pow5_div_3,
+                        SEP_jk(2)*SEP_jk(0)/p4_sep_jk_pow5_div_3, SEP_jk(2)*SEP_jk(1)/p4_sep_jk_pow5_div_3, (SEP_jk(2)*SEP_jk(2)/p4_sep_jk_pow5_div_3 - inv_p4_sep_jk_pow3 );
         
             mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
             mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;
