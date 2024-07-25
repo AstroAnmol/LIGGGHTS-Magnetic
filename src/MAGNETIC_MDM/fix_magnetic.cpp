@@ -239,6 +239,9 @@ void FixMagnetic::post_force(int vflag)
   int nghost = atom->nghost;
   int *type = atom->type;
 
+  // Access total number of atoms
+  bigint total_atoms = atom->natoms;
+
   // External magnetic field
   Eigen::Vector3d H0;
   H0<<ex,ey,ez;
@@ -256,13 +259,13 @@ void FixMagnetic::post_force(int vflag)
 
   // Separation matrix for x, y, z component and magnitude
   // Eigen::MatrixXd SEP_x_mat(inum, inum), SEP_y_mat(inum, inum), SEP_z_mat(inum, inum), sep_mat(inum,inum);
-  SEP_x_mat=Eigen::MatrixXd::Zero(inum, inum);
-  SEP_y_mat=Eigen::MatrixXd::Zero(inum, inum);
-  SEP_z_mat=Eigen::MatrixXd::Zero(inum, inum);
-  sep_mat=Eigen::MatrixXd::Zero(inum, inum);
-  sep_pow3=Eigen::MatrixXd::Zero(inum, inum);
-  sep_pow4=Eigen::MatrixXd::Zero(inum, inum);
-  sep_pow5=Eigen::MatrixXd::Zero(inum, inum);
+  SEP_x_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  SEP_y_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  SEP_z_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_pow3=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_pow4=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_pow5=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
 
   rad = atom->radius;
   x = atom->x;
@@ -506,12 +509,13 @@ void FixMagnetic::compute_SEP(int i, int j){
     sep_pow4(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,4);
     sep_pow5(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,5);
   }
-  // else{
+  else{
+    std::cout<<"didnt need to calculate sep"<<std::endl<<std::endl;
   //   SEP_ij(0)=SEP_x_mat(atom_i_id-1,atom_j_id-1);
   //   SEP_ij(1)=SEP_y_mat(atom_i_id-1,atom_j_id-1);
   //   SEP_ij(2)=SEP_z_mat(atom_i_id-1,atom_j_id-1);
   //   sep_ij=sep_mat(atom_i_id-1,atom_j_id-1);
-  // }
+  }
 }
 
 // double FixMagnetic::nchoosek(int n, int k){
