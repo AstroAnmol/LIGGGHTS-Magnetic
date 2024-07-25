@@ -360,7 +360,7 @@ void FixMagnetic::post_force(int vflag)
         }
 
         //solving the linear system of equations
-        mom_vec=mom_mat.householderQr().solve(H_vec);
+        mom_vec=mom_mat.ldlt().solve(H_vec);
 
         // std::cout<<mom_mat<<std::endl<<std::endl;
         mu_i_vector=mom_vec.head(3);
@@ -466,12 +466,11 @@ Eigen::Matrix3d FixMagnetic::Mom_Mat_ij(int i, int j){
 void FixMagnetic::compute_SEP(int i, int j){
   int atom_i_id = atom_id[i]; // Get ID of atom i
   int atom_j_id = atom_id[j]; // Get ID of atom j 
-  
-  // separation distance vector
-  Eigen::Vector3d SEP_ij;
-  double sep_ij;
 
   if (sep_mat(atom_i_id-1,atom_j_id-1)==0){
+    // separation distance vector
+    Eigen::Vector3d SEP_ij;
+    double sep_ij;
     SEP_ij << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
     sep_ij = SEP_ij.norm();
           
@@ -509,13 +508,12 @@ void FixMagnetic::compute_SEP(int i, int j){
     sep_pow4(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,4);
     sep_pow5(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,5);
   }
-  else{
-    std::cout<<"didnt need to calculate sep"<<std::endl<<std::endl;
+  // else{
   //   SEP_ij(0)=SEP_x_mat(atom_i_id-1,atom_j_id-1);
   //   SEP_ij(1)=SEP_y_mat(atom_i_id-1,atom_j_id-1);
   //   SEP_ij(2)=SEP_z_mat(atom_i_id-1,atom_j_id-1);
   //   sep_ij=sep_mat(atom_i_id-1,atom_j_id-1);
-  }
+  // }
 }
 
 // double FixMagnetic::nchoosek(int n, int k){
