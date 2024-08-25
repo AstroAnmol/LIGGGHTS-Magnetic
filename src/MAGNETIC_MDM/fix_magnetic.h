@@ -43,6 +43,9 @@ class FixMagnetic : public Fix {
   // double nchoosek(int n, int k);
   int maxatom;
   double **hfield;
+  double **last_forces; // Store last computed forces
+  double force_duration; // Duration for applying the last computed forces
+  double last_force_time; // The time when forces were last computed
 
   /* ----------------------------------------------------------------
   variables and functions needed for mag force calculation

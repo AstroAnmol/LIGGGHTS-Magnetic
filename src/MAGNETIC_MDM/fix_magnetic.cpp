@@ -73,9 +73,12 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
   fix_susceptibility_(0),
   susceptibility_(0),
-  Fix(lmp, narg, arg)
+  Fix(lmp, narg, arg),
+  last_force_time(0),
+  // last_forces(nullptr),
+  force_duration(0)
 {
-  if (narg != 6) error->all(FLERR,"Illegal fix magnetic command");
+  if (narg != 7) error->all(FLERR,"Illegal fix magnetic command");
 
   xstr = ystr = zstr = NULL;
 
@@ -106,6 +109,8 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
     zstyle = CONSTANT;
   }
 
+  force_duration = atof(arg[6]);
+
   maxatom = 0;
   hfield = NULL;
 }
@@ -118,6 +123,7 @@ FixMagnetic::~FixMagnetic()
   delete [] ystr;
   delete [] zstr;
   memory->destroy(hfield);
+  memory->destroy(last_forces);
 
   if (susceptibility_)
     delete []susceptibility_;
@@ -252,10 +258,16 @@ void FixMagnetic::post_force(int vflag)
     memory->destroy(hfield);
     memory->create(hfield,maxatom,3,"hfield:hfield");
   }
+
   inum = list->inum;
   ilist = list->ilist;
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
+
+  // Initialize storage for forces
+  if (!last_forces) {
+    memory->create(last_forces, inum, 3, "fix_magnetic:last_forces");
+  }
 
   // Separation matrix for x, y, z component and magnitude
   // Eigen::MatrixXd SEP_x_mat(inum, inum), SEP_y_mat(inum, inum), SEP_z_mat(inum, inum), sep_mat(inum,inum);
@@ -271,6 +283,27 @@ void FixMagnetic::post_force(int vflag)
   x = atom->x;
   // Access the atom IDs
   atom_id = atom->tag;
+
+  // Update the current simulation time
+  double current_time = update->ntimestep * update->dt;
+
+  if (current_time - last_force_time < force_duration && last_force_time>0){
+    std::cout<<"no need to calculate force"<<std::endl<<std::endl;
+    // Apply stored forces
+    for (ii = 0; ii < inum; ii++) {
+      i = ilist[ii];
+      if (mask[i] & groupbit) {
+
+        f[i][0] += last_forces[i][0];
+        f[i][1] += last_forces[i][1];
+        f[i][2] += last_forces[i][2];
+      }
+    }
+    return;
+  }
+
+  // Time to recalculate forces
+  last_force_time = current_time;
   
   if (varflag == CONSTANT) {
 
@@ -383,6 +416,8 @@ void FixMagnetic::post_force(int vflag)
         jnum = numneigh[i];
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+        Eigen::Vector3d Force_i;
+        Force_i=Eigen::Vector3d::Zero();
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
@@ -405,11 +440,21 @@ void FixMagnetic::post_force(int vflag)
           double mumu = mu_i_vector.dot(mu_j_vector);
 
           double K=3*mu0/p4/sep_pow4(atom_i_id-1,atom_j_id-1);
-          
-          f[i][0] += K*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP_ij[0]/sep_ij);
-          f[i][1] += K*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP_ij[1]/sep_ij);
-          f[i][2] += K*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP_ij[2]/sep_ij);
+          Eigen::Vector3d Force_ij;
+          Force_ij= K*(mir*mu_j_vector+mjr*mu_i_vector+(mumu-5*mjr*mir)*SEP_ij/sep_ij);
+
+          Force_i+=Force_ij;
         }
+
+        // fix force for ith atom
+        f[i][0] += Force_i[0];
+        f[i][1] += Force_i[1];
+        f[i][2] += Force_i[2];
+
+        // Store the computed forces
+        last_forces[i][0] = Force_i[0];
+        last_forces[i][1] = Force_i[1];
+        last_forces[i][2] = Force_i[2];
       }
     }
   }
@@ -508,23 +553,4 @@ void FixMagnetic::compute_SEP(int i, int j){
     sep_pow4(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,4);
     sep_pow5(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,5);
   }
-  // else{
-  //   SEP_ij(0)=SEP_x_mat(atom_i_id-1,atom_j_id-1);
-  //   SEP_ij(1)=SEP_y_mat(atom_i_id-1,atom_j_id-1);
-  //   SEP_ij(2)=SEP_z_mat(atom_i_id-1,atom_j_id-1);
-  //   sep_ij=sep_mat(atom_i_id-1,atom_j_id-1);
-  // }
 }
-
-// double FixMagnetic::nchoosek(int n, int k){
-//     if (k > n) return 0;
-//     if (k * 2 > n) k = n-k;
-//     if (k == 0) return 1;
-
-//     int result = n;
-//     for( int i = 2; i <= k; ++i ) {
-//         result *= (n-i+1);
-//         result /= i;
-//     }
-//     return result;
-// }
