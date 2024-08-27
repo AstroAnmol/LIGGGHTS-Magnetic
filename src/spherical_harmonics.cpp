@@ -4,7 +4,7 @@
     University of Maryland College Park
     anmolsikka09@gmail.com
 
-    Thanks for the contributinos by Thomas Leps
+    Thanks for the contributions by Thomas Leps
 ------------------------------------------------------------------------- */
 
 #include <iostream>

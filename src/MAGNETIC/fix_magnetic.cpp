@@ -240,11 +240,11 @@ void FixMagnetic::post_force(int vflag)
   int *type = atom->type;
 
   // Variables needed for MDM calculations
-    double p4 = M_PI*4;
-    double mu0 = p4*1e-7;
-    // External magnetic field
-    Eigen::Vector3d H0;
-    H0<<ex,ey,ez;
+  double p4 = M_PI*4;
+  double mu0 = p4*1e-7;
+  // External magnetic field
+  Eigen::Vector3d H0;
+  H0<<ex,ey,ez;
 
   // reallocate hfield array if necessary
   if (varflag == ATOM && nlocal > maxatom) {

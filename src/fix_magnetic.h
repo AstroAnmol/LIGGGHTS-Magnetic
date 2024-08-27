@@ -32,6 +32,9 @@ class FixMagnetic : public Fix {
 
  private:
   double ex,ey,ez;
+  double *rad;
+  double **x;
+  int *atom_id;
   int varflag;
   char *xstr,*ystr,*zstr;
   int xvar,yvar,zvar,xstyle,ystyle,zstyle;
@@ -40,6 +43,25 @@ class FixMagnetic : public Fix {
   // double nchoosek(int n, int k);
   int maxatom;
   double **hfield;
+  double **last_forces; // Store last computed forces
+  double force_duration; // Duration for applying the last computed forces
+  double last_force_time; // The time when forces were last computed
+
+  /* ----------------------------------------------------------------
+  variables and functions needed for mag force calculation
+  ----------------------------------------------------------------- */ 
+
+  // variables
+  double p4 = M_PI*4;
+  double mu0 = p4*1e-7;
+  Eigen::MatrixXd SEP_x_mat, SEP_y_mat, SEP_z_mat, sep_mat;
+  Eigen::MatrixXd sep_pow3, sep_pow4, sep_pow5;
+
+  //functions
+  Eigen::Matrix3d Mom_Mat_ij(int i, int j);
+  void compute_SEP(int i, int j);
+
+
 
 protected:
   class FixPropertyGlobal* fix_susceptibility_;

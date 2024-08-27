@@ -36,7 +36,7 @@
     University of Maryland College Park
     anmolsikka09@gmail.com
 
-    Thanks for the contributinos by Thomas Leps
+    Thanks for the contributions by Thomas Leps
 ------------------------------------------------------------------------- 
     
 
@@ -73,9 +73,12 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
   fix_susceptibility_(0),
   susceptibility_(0),
-  Fix(lmp, narg, arg)
+  Fix(lmp, narg, arg),
+  last_force_time(0),
+  // last_forces(nullptr),
+  force_duration(0)
 {
-  if (narg != 6) error->all(FLERR,"Illegal fix magnetic command");
+  if (narg != 7) error->all(FLERR,"Illegal fix magnetic command");
 
   xstr = ystr = zstr = NULL;
 
@@ -106,6 +109,8 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
     zstyle = CONSTANT;
   }
 
+  force_duration = atof(arg[6]);
+
   maxatom = 0;
   hfield = NULL;
 }
@@ -118,6 +123,7 @@ FixMagnetic::~FixMagnetic()
   delete [] ystr;
   delete [] zstr;
   memory->destroy(hfield);
+  memory->destroy(last_forces);
 
   if (susceptibility_)
     delete []susceptibility_;
@@ -231,8 +237,6 @@ void FixMagnetic::post_force(int vflag)
 { 
   int i,j,k,ii,jj,kk,inum,jnum;
   int *ilist,*jlist,*numneigh,**firstneigh,*slist;
-  double *rad = atom->radius;
-  double **x = atom->x;
   double **mu = atom->mu;
   double **f = atom->f;
   double *q = atom->q;
@@ -241,12 +245,12 @@ void FixMagnetic::post_force(int vflag)
   int nghost = atom->nghost;
   int *type = atom->type;
 
-  // Variables needed for MDM calculations
-    double p4 = M_PI*4;
-    double mu0 = p4*1e-7;
-    // External magnetic field
-    Eigen::Vector3d H0;
-    H0<<ex,ey,ez;
+  // Access total number of atoms
+  bigint total_atoms = atom->natoms;
+
+  // External magnetic field
+  Eigen::Vector3d H0;
+  H0<<ex,ey,ez;
 
   // reallocate hfield array if necessary
   if (varflag == ATOM && nlocal > maxatom) {
@@ -254,12 +258,65 @@ void FixMagnetic::post_force(int vflag)
     memory->destroy(hfield);
     memory->create(hfield,maxatom,3,"hfield:hfield");
   }
+
   inum = list->inum;
   ilist = list->ilist;
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
+
+  // Initialize storage for forces
+  if (!last_forces) {
+    memory->create(last_forces, inum, 3, "fix_magnetic:last_forces");
+  }
+
+  // Separation matrix for x, y, z component and magnitude
+  // Eigen::MatrixXd SEP_x_mat(inum, inum), SEP_y_mat(inum, inum), SEP_z_mat(inum, inum), sep_mat(inum,inum);
+  SEP_x_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  SEP_y_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  SEP_z_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_pow3=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_pow4=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  sep_pow5=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+
+  rad = atom->radius;
+  x = atom->x;
+  // Access the atom IDs
+  atom_id = atom->tag;
+
+  // Update the current simulation time
+  double current_time = update->ntimestep * update->dt;
+
+  std::cout<<"current time "<<current_time<<std::endl;
+  std::cout<<"last_force_time "<<last_force_time<<std::endl;
+
+
+  if (current_time - last_force_time < force_duration && last_force_time>0){
+    std::cout<<"no need to calculate force"<<std::endl<<std::endl;
+    // Apply stored forces
+    for (ii = 0; ii < inum; ii++) {
+      i = ilist[ii];
+      if (mask[i] & groupbit) {
+        std::cout<<last_forces[i][0]<<",";
+        std::cout<<last_forces[i][1]<<",";
+        std::cout<<last_forces[i][2]<<std::endl<<std::endl;
+        f[i][0] += last_forces[i][0];
+        f[i][1] += last_forces[i][1];
+        f[i][2] += last_forces[i][2];
+      }
+    }
+    return;
+  }
+
+  // Time to recalculate forces
+  last_force_time = current_time;
   
   if (varflag == CONSTANT) {
+
+    /* ----------------------------------------------------------------------
+      Moment Calculation
+    ------------------------------------------------------------------------- */
+    // std::cout<<"Starting moment calculation"<<std::endl<<std::endl;
 
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -312,32 +369,15 @@ void FixMagnetic::post_force(int vflag)
           mom_mat(3*(jj+1),3*(jj+1))=1/C_j;
           mom_mat(3*(jj+1)+1,3*(jj+1)+1)=1/C_j;
           mom_mat(3*(jj+1)+2,3*(jj+1)+2)=1/C_j;
-        
+
           // separation distance vector
-          Eigen::Vector3d SEP_ij;
-          SEP_ij << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-          double sep_ij = SEP_ij.norm();
-          
-          ////////////////////////////////////////////////
-          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-          // IS LOWER THAN THE SUM OF RADII.
-          // CHANGE IT TO SUM OF RADII IF TRUE.
-          ////////////////////////////////////////////////
-          
-          // sum of radii of two particles
-          double rad_sum_ij = rad[i] + rad[j];
-          if (sep_ij/rad_sum_ij<1)
-          {
-            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
-            sep_ij=rad_sum_ij;
-          }
+          compute_SEP(i,j);
+          // std::cout<<"First separation calculation"<<std::endl<<std::endl;
 
           // i-j 3 X 3 matrix definition
           Eigen::Matrix3d mom_mat_ij;
-          mom_mat_ij<< (3*SEP_ij(0)*SEP_ij(0)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) ), 3*SEP_ij(0)*SEP_ij(1)/(p4*std::pow(sep_ij,5)), 3*SEP_ij(0)*SEP_ij(2)/(p4*std::pow(sep_ij,5)),
-                       3*SEP_ij(1)*SEP_ij(0)/(p4*std::pow(sep_ij,5)), (3*SEP_ij(1)*SEP_ij(1)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) ), 3*SEP_ij(1)*SEP_ij(2)/(p4*std::pow(sep_ij,5)),
-                       3*SEP_ij(2)*SEP_ij(0)/(p4*std::pow(sep_ij,5)), 3*SEP_ij(2)*SEP_ij(1)/(p4*std::pow(sep_ij,5)), (3*SEP_ij(2)*SEP_ij(2)/(p4*std::pow(sep_ij,5)) - 1/(p4*pow(sep_ij,3)) );
-        
+          mom_mat_ij=Mom_Mat_ij(i, j);
+      
           mom_mat.block(0,(jj+1)*3,3,3)=-mom_mat_ij;
           mom_mat.block((jj+1)*3,0,3,3)=-mom_mat_ij;
 
@@ -347,45 +387,21 @@ void FixMagnetic::post_force(int vflag)
             k &=NEIGHMASK;
 
             // separation distance vector
-            Eigen::Vector3d SEP_jk;
-            SEP_jk << x[j][0] - x[k][0], x[j][1] - x[k][1], x[j][2] - x[k][2];
-            double sep_jk = SEP_jk.norm();
-
-            ////////////////////////////////////////////////
-            // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-            // IS LOWER THAN THE SUM OF RADII.
-            // CHANGE IT TO SUM OF RADII IF TRUE.
-            ////////////////////////////////////////////////
-          
-            // sum of radii of two particles
-            double rad_sum_jk = rad[j] + rad[k];
-            if (sep_jk/rad_sum_jk<1)
-            {
-                SEP_jk=(SEP_jk/sep_jk)*rad_sum_jk;
-                sep_jk=rad_sum_jk;
-            }
+            compute_SEP(j,k);
 
             // j-k 3 X 3 matrix definition
             Eigen::Matrix3d mom_mat_jk;
-            mom_mat_jk<< (3*SEP_jk(0)*SEP_jk(0)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) ), 3*SEP_jk(0)*SEP_jk(1)/(p4*std::pow(sep_jk,5)), 3*SEP_jk(0)*SEP_jk(2)/(p4*std::pow(sep_jk,5)),
-                        3*SEP_jk(1)*SEP_jk(0)/(p4*std::pow(sep_jk,5)), (3*SEP_jk(1)*SEP_jk(1)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) ), 3*SEP_jk(1)*SEP_jk(2)/(p4*std::pow(sep_jk,5)),
-                        3*SEP_jk(2)*SEP_jk(0)/(p4*std::pow(sep_jk,5)), 3*SEP_jk(2)*SEP_jk(1)/(p4*std::pow(sep_jk,5)), (3*SEP_jk(2)*SEP_jk(2)/(p4*std::pow(sep_jk,5)) - 1/(p4*pow(sep_jk,3)) );
-        
+            mom_mat_jk=Mom_Mat_ij(j, k);
+            
             mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
             mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;
           }
         }
 
-        std::cout<<H_vec<<std::endl<<std::endl;
-
-        std::cout<<mom_mat<<std::endl<<std::endl;
-        
-
         //solving the linear system of equations
-        mom_vec=mom_mat.householderQr().solve(H_vec);
+        mom_vec=mom_mat.ldlt().solve(H_vec);
 
-         std::cout<<mom_vec<<std::endl<<std::endl;
-
+        // std::cout<<mom_mat<<std::endl<<std::endl;
         mu_i_vector=mom_vec.head(3);
 
         mu[i][0]=mu_i_vector[0];
@@ -393,48 +409,72 @@ void FixMagnetic::post_force(int vflag)
         mu[i][2]=mu_i_vector[2];
       }
     }
+    /* ----------------------------------------------------------------------
+      Force Calculation After Moment Calculation
+    ------------------------------------------------------------------------- */
 
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
+      int atom_i_id = atom_id[i]; // Get ID of atom i
     
       if (mask[i] & groupbit) {
         jlist = firstneigh[i];
         jnum = numneigh[i];
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+        Eigen::Vector3d Force_i;
+        Force_i=Eigen::Vector3d::Zero();
 
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
           j &= NEIGHMASK;
+
+          int atom_j_id = atom_id[j]; // Get ID of atom j
+
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
 
+          // separation distance vector
+          compute_SEP(i,j);
+      
           Eigen::Vector3d SEP_ij;
-          SEP_ij << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
-          double sep_ij = SEP_ij.norm();
-
-          ////////////////////////////////////////////////
-          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-          // IS LOWER THAN THE SUM OF RADII.
-          // CHANGE IT TO SUM OF RADII IF TRUE.
-          ////////////////////////////////////////////////
-          double rad_sum_ij = rad[i] + rad[j];
-          if (sep_ij/rad_sum_ij<1)
-          {
-            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
-            sep_ij=rad_sum_ij;
-          }
+          SEP_ij<<SEP_x_mat(atom_i_id-1,atom_j_id-1), SEP_y_mat(atom_i_id-1,atom_j_id-1), SEP_z_mat(atom_i_id-1,atom_j_id-1);
+          double sep_ij=sep_ij=sep_mat(atom_i_id-1,atom_j_id-1);
 
           double mir=mu_i_vector.dot(SEP_ij)/sep_ij;
           double mjr=mu_j_vector.dot(SEP_ij)/sep_ij;
           double mumu = mu_i_vector.dot(mu_j_vector);
-          
-          f[i][0] += (3*mu0/p4/std::pow(sep_ij,4))*(mir*mu[j][0]+mjr*mu[i][0]+(mumu-5*mjr*mir)*SEP_ij[0]/sep_ij);
-          f[i][1] += (3*mu0/p4/std::pow(sep_ij,4))*(mir*mu[j][1]+mjr*mu[i][1]+(mumu-5*mjr*mir)*SEP_ij[1]/sep_ij);
-          f[i][2] += (3*mu0/p4/std::pow(sep_ij,4))*(mir*mu[j][2]+mjr*mu[i][2]+(mumu-5*mjr*mir)*SEP_ij[2]/sep_ij);
+
+          double K=3*mu0/p4/sep_pow4(atom_i_id-1,atom_j_id-1);
+          Eigen::Vector3d Force_ij;
+          Force_ij= K*(mir*mu_j_vector+mjr*mu_i_vector+(mumu-5*mjr*mir)*SEP_ij/sep_ij);
+
+          Force_i+=Force_ij;
+
         }
+
+        // fix force for ith atom
+        f[i][0] += Force_i[0];
+        f[i][1] += Force_i[1];
+        f[i][2] += Force_i[2];
+
+        // Store the computed forces
+        last_forces[i][0] = Force_i[0];
+        last_forces[i][1] = Force_i[1];
+        last_forces[i][2] = Force_i[2];
       }
     }
+    for (ii = 0; ii < inum; ii++) {
+      i = ilist[ii];
+      int atom_i_id = atom_id[i]; // Get ID of atom i
+
+      std::cout<<"force after computation: ";
+      std::cout<<last_forces[i][0]<<",";
+      std::cout<<last_forces[i][1]<<",";
+      std::cout<<last_forces[i][2]<<std::endl<<std::endl;
+
+    }
+
   }
 }
 
@@ -456,15 +496,79 @@ double FixMagnetic::memory_usage()
   return bytes;
 }
 
-// double FixMagnetic::nchoosek(int n, int k){
-//     if (k > n) return 0;
-//     if (k * 2 > n) k = n-k;
-//     if (k == 0) return 1;
+/* ----------------------------------------------------------------------
+  Function to compute 3 X 3 matrix for moment_matrix 
+------------------------------------------------------------------------- */
 
-//     int result = n;
-//     for( int i = 2; i <= k; ++i ) {
-//         result *= (n-i+1);
-//         result /= i;
-//     }
-//     return result;
-// }
+Eigen::Matrix3d FixMagnetic::Mom_Mat_ij(int i, int j){
+  int atom_i_id = atom_id[i]; // Get ID of atom i
+  int atom_j_id = atom_id[j]; // Get ID of atom j 
+  Eigen::Vector3d SEP_ij;
+  SEP_ij<<SEP_x_mat(atom_i_id-1,atom_j_id-1), SEP_y_mat(atom_i_id-1,atom_j_id-1), SEP_z_mat(atom_i_id-1,atom_j_id-1);
+  double p4_sep_ij_pow5_div_3=(p4*sep_pow5(atom_i_id-1,atom_j_id-1))/3;
+  double inv_p4_sep_ij_pow3=1/(p4*sep_pow3(atom_i_id-1,atom_j_id-1));
+
+  // std::cout<<SEP_ij<<std::endl<<std::endl;
+  // std::cout<<p4_sep_ij_pow5_div_3<<std::endl<<std::endl;
+  // std::cout<<inv_p4_sep_ij_pow3<<std::endl<<std::endl;
+
+  // i-j 3 X 3 matrix definition
+  Eigen::Matrix3d mom_mat_ij;
+  double mom_mat_ij_01=SEP_ij(0)*SEP_ij(1)/p4_sep_ij_pow5_div_3;
+  double mom_mat_ij_02=SEP_ij(0)*SEP_ij(2)/p4_sep_ij_pow5_div_3;
+  double mom_mat_ij_12=SEP_ij(1)*SEP_ij(2)/p4_sep_ij_pow5_div_3;
+  mom_mat_ij<< (SEP_ij(0)*SEP_ij(0)/p4_sep_ij_pow5_div_3 - inv_p4_sep_ij_pow3), mom_mat_ij_01, mom_mat_ij_02,
+                mom_mat_ij_01, (SEP_ij(1)*SEP_ij(1)/p4_sep_ij_pow5_div_3 - inv_p4_sep_ij_pow3), mom_mat_ij_12,
+                mom_mat_ij_02, mom_mat_ij_02, (SEP_ij(2)*SEP_ij(2)/p4_sep_ij_pow5_div_3 - inv_p4_sep_ij_pow3);
+  return mom_mat_ij;
+}
+
+/* ----------------------------------------------------------------------
+  Function to compute separation distance
+------------------------------------------------------------------------- */
+void FixMagnetic::compute_SEP(int i, int j){
+  int atom_i_id = atom_id[i]; // Get ID of atom i
+  int atom_j_id = atom_id[j]; // Get ID of atom j 
+
+  if (sep_mat(atom_i_id-1,atom_j_id-1)==0){
+    // separation distance vector
+    Eigen::Vector3d SEP_ij;
+    double sep_ij;
+    SEP_ij << x[i][0] - x[j][0], x[i][1] - x[j][1], x[i][2] - x[j][2];
+    sep_ij = SEP_ij.norm();
+          
+    /* -----------------------------------------
+    CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+    IS LOWER THAN THE SUM OF RADII.
+    CHANGE IT TO SUM OF RADII IF TRUE.
+    --------------------------------------------*/
+    // sum of radii of two particles
+    double rad_sum_ij = rad[i] + rad[j];
+    if (sep_ij/rad_sum_ij<1){
+      SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
+      sep_ij=rad_sum_ij;
+    }
+
+    // set ij values in the separation matrices
+    SEP_x_mat(atom_i_id-1,atom_j_id-1)=SEP_ij(0);
+    SEP_y_mat(atom_i_id-1,atom_j_id-1)=SEP_ij(1);
+    SEP_z_mat(atom_i_id-1,atom_j_id-1)=SEP_ij(2);
+    sep_mat(atom_i_id-1,atom_j_id-1)=sep_ij;
+
+    // set ji values in the separation matrices
+    SEP_x_mat(atom_j_id-1,atom_i_id-1)=-SEP_ij(0);
+    SEP_y_mat(atom_j_id-1,atom_i_id-1)=-SEP_ij(1);
+    SEP_z_mat(atom_j_id-1,atom_i_id-1)=-SEP_ij(2);
+    sep_mat(atom_j_id-1,atom_i_id-1)=sep_ij;
+
+    // take powers of sep magnitude
+
+    sep_pow3(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,3);
+    sep_pow4(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,4);
+    sep_pow5(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,5);
+
+    sep_pow3(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,3);
+    sep_pow4(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,4);
+    sep_pow5(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,5);
+  }
+}
