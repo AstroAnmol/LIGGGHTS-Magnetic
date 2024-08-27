@@ -288,7 +288,7 @@ void FixMagnetic::post_force(int vflag)
   double current_time = update->ntimestep * update->dt;
 
   if (current_time - last_force_time < force_duration && last_force_time>0){
-    std::cout<<"no need to calculate force"<<std::endl<<std::endl;
+    // std::cout<<"no need to calculate force"<<std::endl<<std::endl;
     // Apply stored forces
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
