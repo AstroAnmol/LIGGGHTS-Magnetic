@@ -73,10 +73,8 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
   fix_susceptibility_(0),
   susceptibility_(0),
-  Fix(lmp, narg, arg),
-  last_force_time(0),
-  // last_forces(nullptr),
-  force_duration(0)
+  Fix(lmp, narg, arg)
+  // last_magforce_timestep(0)
 {
   if (narg != 7) error->all(FLERR,"Illegal fix magnetic command");
 
@@ -109,7 +107,7 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
     zstyle = CONSTANT;
   }
 
-  force_duration = atof(arg[6]);
+  N_magforce_timestep = atof(arg[6]);
 
   maxatom = 0;
   hfield = NULL;
@@ -285,21 +283,18 @@ void FixMagnetic::post_force(int vflag)
   atom_id = atom->tag;
 
   // Update the current simulation time
-  double current_time = update->ntimestep * update->dt;
+  bigint current_timestep = update->ntimestep;
+  std::cout<<"current time step: "<<current_timestep<<std::endl;
+  std::cout<<"magforce time step: "<<N_magforce_timestep<<std::endl;
+  
 
-  std::cout<<"current time "<<current_time<<std::endl;
-  std::cout<<"last_force_time "<<last_force_time<<std::endl;
-
-
-  if (current_time - last_force_time < force_duration && last_force_time>0){
+  if (current_timestep % N_magforce_timestep != 0){
     std::cout<<"no need to calculate force"<<std::endl<<std::endl;
     // Apply stored forces
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
       if (mask[i] & groupbit) {
-        std::cout<<last_forces[i][0]<<",";
-        std::cout<<last_forces[i][1]<<",";
-        std::cout<<last_forces[i][2]<<std::endl<<std::endl;
+
         f[i][0] += last_forces[i][0];
         f[i][1] += last_forces[i][1];
         f[i][2] += last_forces[i][2];
@@ -308,8 +303,6 @@ void FixMagnetic::post_force(int vflag)
     return;
   }
 
-  // Time to recalculate forces
-  last_force_time = current_time;
   
   if (varflag == CONSTANT) {
 
@@ -450,7 +443,6 @@ void FixMagnetic::post_force(int vflag)
           Force_ij= K*(mir*mu_j_vector+mjr*mu_i_vector+(mumu-5*mjr*mir)*SEP_ij/sep_ij);
 
           Force_i+=Force_ij;
-
         }
 
         // fix force for ith atom
@@ -464,17 +456,6 @@ void FixMagnetic::post_force(int vflag)
         last_forces[i][2] = Force_i[2];
       }
     }
-    for (ii = 0; ii < inum; ii++) {
-      i = ilist[ii];
-      int atom_i_id = atom_id[i]; // Get ID of atom i
-
-      std::cout<<"force after computation: ";
-      std::cout<<last_forces[i][0]<<",";
-      std::cout<<last_forces[i][1]<<",";
-      std::cout<<last_forces[i][2]<<std::endl<<std::endl;
-
-    }
-
   }
 }
 
