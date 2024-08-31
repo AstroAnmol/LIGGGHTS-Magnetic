@@ -73,10 +73,8 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
   fix_susceptibility_(0),
   susceptibility_(0),
-  Fix(lmp, narg, arg),
-  last_force_time(0),
-  // last_forces(nullptr),
-  force_duration(0)
+  Fix(lmp, narg, arg)
+  // last_magforce_timestep(0)
 {
   if (narg != 7) error->all(FLERR,"Illegal fix magnetic command");
 
@@ -109,7 +107,7 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
     zstyle = CONSTANT;
   }
 
-  force_duration = atof(arg[6]);
+  N_magforce_timestep = atof(arg[6]);
 
   maxatom = 0;
   hfield = NULL;
@@ -285,10 +283,13 @@ void FixMagnetic::post_force(int vflag)
   atom_id = atom->tag;
 
   // Update the current simulation time
-  double current_time = update->ntimestep * update->dt;
+  bigint current_timestep = update->ntimestep;
+  std::cout<<"current time step: "<<current_timestep<<std::endl;
+  std::cout<<"magforce time step: "<<N_magforce_timestep<<std::endl;
+  
 
-  if (current_time - last_force_time < force_duration && last_force_time>0){
-    // std::cout<<"no need to calculate force"<<std::endl<<std::endl;
+  if (current_timestep % N_magforce_timestep != 0){
+    std::cout<<"no need to calculate force"<<std::endl<<std::endl;
     // Apply stored forces
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -302,8 +303,6 @@ void FixMagnetic::post_force(int vflag)
     return;
   }
 
-  // Time to recalculate forces
-  last_force_time = current_time;
   
   if (varflag == CONSTANT) {
 
