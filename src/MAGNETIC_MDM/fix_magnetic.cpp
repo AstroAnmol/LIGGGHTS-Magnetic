@@ -310,7 +310,7 @@ void FixMagnetic::post_force(int vflag)
     /* ----------------------------------------------------------------------
       Moment Calculation
     ------------------------------------------------------------------------- */
-    // std::cout<<"Starting moment calculation"<<std::endl<<std::endl;
+    std::cout<<"Starting moment calculation"<<std::endl<<std::endl;
 
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -329,7 +329,6 @@ void FixMagnetic::post_force(int vflag)
         Eigen::VectorXd H_vec(3*(jnum+1));
         Eigen::VectorXd mom_vec(3*(jnum+1));
 
-        std::cout<<"allocated memory for moment calculation"<<std::endl;
         // First three terms of H_vec
         H_vec.head(3)=H0;
 
@@ -407,6 +406,7 @@ void FixMagnetic::post_force(int vflag)
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
     ------------------------------------------------------------------------- */
+    std::cout<<"starting force calculation"<<std::endl;
 
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -431,6 +431,7 @@ void FixMagnetic::post_force(int vflag)
 
           // separation distance vector
           compute_SEP(i,j);
+          std::cout<<"compute SEP done"<<std::endl;
       
           Eigen::Vector3d SEP_ij;
           SEP_ij<<SEP_x_mat(atom_i_id-1,atom_j_id-1), SEP_y_mat(atom_i_id-1,atom_j_id-1), SEP_z_mat(atom_i_id-1,atom_j_id-1);
