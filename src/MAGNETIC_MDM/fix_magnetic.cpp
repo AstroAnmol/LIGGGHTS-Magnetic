@@ -303,7 +303,8 @@ void FixMagnetic::post_force(int vflag)
     return;
   }
 
-  
+  std::cout<<"calculating force"<<std::endl;
+
   if (varflag == CONSTANT) {
 
     /* ----------------------------------------------------------------------
@@ -328,6 +329,7 @@ void FixMagnetic::post_force(int vflag)
         Eigen::VectorXd H_vec(3*(jnum+1));
         Eigen::VectorXd mom_vec(3*(jnum+1));
 
+        std::cout<<"allocated memory for moment calculation"<<std::endl;
         // First three terms of H_vec
         H_vec.head(3)=H0;
 
