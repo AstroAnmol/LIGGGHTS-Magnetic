@@ -73,8 +73,9 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
   fix_susceptibility_(0),
   susceptibility_(0),
-  Fix(lmp, narg, arg)
-  // last_magforce_timestep(0)
+  Fix(lmp, narg, arg),
+  last_forces(0),
+  N_magforce_timestep(0)
 {
   if (narg != 7) error->all(FLERR,"Illegal fix magnetic command");
 
@@ -431,7 +432,6 @@ void FixMagnetic::post_force(int vflag)
 
           // separation distance vector
           compute_SEP(i,j);
-          std::cout<<"compute SEP done"<<std::endl;
       
           Eigen::Vector3d SEP_ij;
           SEP_ij<<SEP_x_mat(atom_i_id-1,atom_j_id-1), SEP_y_mat(atom_i_id-1,atom_j_id-1), SEP_z_mat(atom_i_id-1,atom_j_id-1);
@@ -447,7 +447,7 @@ void FixMagnetic::post_force(int vflag)
 
           Force_i+=Force_ij;
         }
-
+        std::cout<<"force on ith particle computed"<<std::endl;
         // fix force for ith atom
         f[i][0] += Force_i[0];
         f[i][1] += Force_i[1];
@@ -459,6 +459,7 @@ void FixMagnetic::post_force(int vflag)
         last_forces[i][2] = Force_i[2];
       }
     }
+  std::cout<<"force calculation done"<<std::endl;
   }
 }
 
