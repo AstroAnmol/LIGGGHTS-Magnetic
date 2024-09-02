@@ -304,14 +304,14 @@ void FixMagnetic::post_force(int vflag)
     return;
   }
 
-  std::cout<<"calculating force"<<std::endl;
+  // std::cout<<"calculating force"<<std::endl;
 
   if (varflag == CONSTANT) {
 
     /* ----------------------------------------------------------------------
       Moment Calculation
     ------------------------------------------------------------------------- */
-    std::cout<<"Starting moment calculation"<<std::endl<<std::endl;
+    // std::cout<<"Starting moment calculation"<<std::endl<<std::endl;
 
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -407,7 +407,7 @@ void FixMagnetic::post_force(int vflag)
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
     ------------------------------------------------------------------------- */
-    std::cout<<"starting force calculation"<<std::endl;
+    // std::cout<<"starting force calculation"<<std::endl;
 
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
@@ -447,7 +447,6 @@ void FixMagnetic::post_force(int vflag)
 
           Force_i+=Force_ij;
         }
-        std::cout<<"force on ith particle computed"<<std::endl;
         // fix force for ith atom
         f[i][0] += Force_i[0];
         f[i][1] += Force_i[1];
@@ -459,7 +458,7 @@ void FixMagnetic::post_force(int vflag)
         last_forces[i][2] = Force_i[2];
       }
     }
-  std::cout<<"force calculation done"<<std::endl;
+  // std::cout<<"force calculation done"<<std::endl;
   }
 }
 
