@@ -285,12 +285,12 @@ void FixMagnetic::post_force(int vflag)
 
   // Update the current simulation time
   bigint current_timestep = update->ntimestep;
-  std::cout<<"current time step: "<<current_timestep<<std::endl;
-  std::cout<<"magforce time step: "<<N_magforce_timestep<<std::endl;
+  // std::cout<<"current time step: "<<current_timestep<<std::endl;
+  // std::cout<<"magforce time step: "<<N_magforce_timestep<<std::endl;
   
 
   if (current_timestep % N_magforce_timestep != 0){
-    std::cout<<"no need to calculate force"<<std::endl<<std::endl;
+    // std::cout<<"no need to calculate force"<<std::endl<<std::endl;
     // Apply stored forces
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
