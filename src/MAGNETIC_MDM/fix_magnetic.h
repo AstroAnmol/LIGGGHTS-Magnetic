@@ -55,7 +55,7 @@ class FixMagnetic : public Fix {
   double p4 = M_PI*4;
   double mu0 = p4*1e-7;
   Eigen::MatrixXd SEP_x_mat, SEP_y_mat, SEP_z_mat, sep_mat;
-  Eigen::MatrixXd sep_pow3, sep_pow4, sep_pow5;
+  // Eigen::MatrixXd sep_pow3, sep_pow4, sep_pow5;
 
   //functions
   Eigen::Matrix3d Mom_Mat_ij(int i, int j);

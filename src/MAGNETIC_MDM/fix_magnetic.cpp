@@ -269,14 +269,13 @@ void FixMagnetic::post_force(int vflag)
   }
 
   // Separation matrix for x, y, z component and magnitude
-  // Eigen::MatrixXd SEP_x_mat(inum, inum), SEP_y_mat(inum, inum), SEP_z_mat(inum, inum), sep_mat(inum,inum);
   SEP_x_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
   SEP_y_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
   SEP_z_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
   sep_mat=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
-  sep_pow3=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
-  sep_pow4=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
-  sep_pow5=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  // sep_pow3=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  // sep_pow4=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
+  // sep_pow5=Eigen::MatrixXd::Zero(total_atoms, total_atoms);
 
   rad = atom->radius;
   x = atom->x;
@@ -440,8 +439,9 @@ void FixMagnetic::post_force(int vflag)
           double mir=mu_i_vector.dot(SEP_ij)/sep_ij;
           double mjr=mu_j_vector.dot(SEP_ij)/sep_ij;
           double mumu = mu_i_vector.dot(mu_j_vector);
-
-          double K=3*mu0/p4/sep_pow4(atom_i_id-1,atom_j_id-1);
+          
+          double sep_pow4 = std::pow(sep_mat(atom_i_id,atom_j_id),4);
+          double K=3*mu0/p4/sep_pow4;
           Eigen::Vector3d Force_ij;
           Force_ij= K*(mir*mu_j_vector+mjr*mu_i_vector+(mumu-5*mjr*mir)*SEP_ij/sep_ij);
 
@@ -489,12 +489,12 @@ Eigen::Matrix3d FixMagnetic::Mom_Mat_ij(int i, int j){
   int atom_j_id = atom_id[j]; // Get ID of atom j 
   Eigen::Vector3d SEP_ij;
   SEP_ij<<SEP_x_mat(atom_i_id-1,atom_j_id-1), SEP_y_mat(atom_i_id-1,atom_j_id-1), SEP_z_mat(atom_i_id-1,atom_j_id-1);
-  double p4_sep_ij_pow5_div_3=(p4*sep_pow5(atom_i_id-1,atom_j_id-1))/3;
-  double inv_p4_sep_ij_pow3=1/(p4*sep_pow3(atom_i_id-1,atom_j_id-1));
 
-  // std::cout<<SEP_ij<<std::endl<<std::endl;
-  // std::cout<<p4_sep_ij_pow5_div_3<<std::endl<<std::endl;
-  // std::cout<<inv_p4_sep_ij_pow3<<std::endl<<std::endl;
+  double sep_pow3 = std::pow(sep_mat(atom_i_id,atom_j_id),3);
+  double sep_pow5 = std::pow(sep_mat(atom_i_id,atom_j_id),5);
+
+  double p4_sep_ij_pow5_div_3=(p4*sep_pow5)/3;
+  double inv_p4_sep_ij_pow3=1/(p4*sep_pow3);
 
   // i-j 3 X 3 matrix definition
   Eigen::Matrix3d mom_mat_ij;
@@ -545,14 +545,14 @@ void FixMagnetic::compute_SEP(int i, int j){
     SEP_z_mat(atom_j_id-1,atom_i_id-1)=-SEP_ij(2);
     sep_mat(atom_j_id-1,atom_i_id-1)=sep_ij;
 
-    // take powers of sep magnitude
+    // // take powers of sep magnitude
 
-    sep_pow3(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,3);
-    sep_pow4(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,4);
-    sep_pow5(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,5);
+    // sep_pow3(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,3);
+    // sep_pow4(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,4);
+    // sep_pow5(atom_i_id-1,atom_j_id-1)=std::pow(sep_ij,5);
 
-    sep_pow3(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,3);
-    sep_pow4(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,4);
-    sep_pow5(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,5);
+    // sep_pow3(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,3);
+    // sep_pow4(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,4);
+    // sep_pow5(atom_j_id-1,atom_i_id-1)=std::pow(sep_ij,5);
   }
 }
