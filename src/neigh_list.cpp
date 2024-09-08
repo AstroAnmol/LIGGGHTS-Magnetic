@@ -77,6 +77,8 @@ NeighList::NeighList(LAMMPS *lmp) :
   numneigh = NULL;
   firstneigh = NULL;
   firstdouble = NULL;
+  firstsepneigh = NULL;
+  // firstSEPneigh = NULL;
 
   dnum = 0;
 
@@ -104,6 +106,7 @@ NeighList::NeighList(LAMMPS *lmp) :
 
   ipage = NULL;
   dpage = NULL;
+  spage = NULL;
 
   nlevels = 0;
   rmin_multigran = NULL;
@@ -121,8 +124,11 @@ NeighList::~NeighList()
     memory->destroy(numneigh);
     memory->sfree(firstneigh);
     memory->sfree(firstdouble);
+    memory->sfree(firstsepneigh);
+    // memory->sfree(firstSEPneigh);
 
     delete [] ipage;
+    delete [] spage;
     if (dnum) delete [] dpage;
   }
 
@@ -159,8 +165,12 @@ void NeighList::setup_pages(int pgsize_caller, int oneatom_caller,
 
   int nmypage = comm->nthreads;
   ipage = new MyPage<int>[nmypage];
-  for (int i = 0; i < nmypage; i++)
+  spage = new MyPage<double>[nmypage];
+
+  for (int i = 0; i < nmypage; i++){
     ipage[i].init(oneatom,pgsize,PGDELTA);
+    spage[i].init(4*oneatom,4*pgsize,PGDELTA);
+  }
 
   if (dnum) {
     dpage = new MyPage<double>[nmypage];
@@ -187,11 +197,18 @@ void NeighList::grow(int nmax)
   memory->destroy(numneigh);
   memory->sfree(firstneigh);
   memory->sfree(firstdouble);
+  memory->sfree(firstsepneigh);
+  // memory->sfree(firstSEPneigh);
+
 
   memory->create(ilist,maxatoms,"neighlist:ilist");
   memory->create(numneigh,maxatoms,"neighlist:numneigh");
   firstneigh = (int **) memory->smalloc(maxatoms*sizeof(int *),
                                         "neighlist:firstneigh");
+  firstsepneigh = (double **) memory->smalloc(maxatoms*sizeof(double *),
+                                        "neighlist:firstsepneigh");
+  // firstSEPneigh = (double ***) memory->smalloc(maxatoms*sizeof(double *),
+  //                                       "neighlist:firstSEPneigh");
 
   if (dnum)
     firstdouble = (double **) memory->smalloc(maxatoms*sizeof(double *),
@@ -340,6 +357,13 @@ bigint NeighList::memory_usage()
   if (ipage) {
   for (int i = 0; i < nmypage; i++)
     bytes += ipage[i].size();
+  }
+
+  if (spage) {
+    for (int i = 0; 1 < nmypage; i++){
+    bytes += maxatoms * sizeof(double *);
+    bytes += spage[i].size();
+    }
   }
 
   if (dnum && dpage) {
