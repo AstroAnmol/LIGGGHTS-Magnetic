@@ -273,7 +273,7 @@ void FixMagnetic::post_force(int vflag)
   // Update the current simulation time
   bigint current_timestep = update->ntimestep;
   
-  printf("if statement for time step check");
+  printf("if statement for time step check \n");
   if (current_timestep % N_magforce_timestep != 0){
     // Apply stored forces
     for (ii = 0; ii < inum; ii++) {
@@ -287,7 +287,7 @@ void FixMagnetic::post_force(int vflag)
     }
     return;
   }
-  printf("Checked for stored forces");
+  printf("Checked for stored forces \n");
 
   if (varflag == CONSTANT) {
 
@@ -295,7 +295,7 @@ void FixMagnetic::post_force(int vflag)
       Moment Calculation
     ------------------------------------------------------------------------- */
 
-    printf("Starting moment calculation");
+    printf("Starting moment calculation \n");
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
 
@@ -395,12 +395,12 @@ void FixMagnetic::post_force(int vflag)
       }
     }
 
-    printf("Completed moment calculation");
+    printf("Completed moment calculation \n");
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
     ------------------------------------------------------------------------- */
 
-    printf("Starting force calculation");
+    printf("Starting force calculation \n");
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
       // int atom_i_id = atom_id[i]; // Get ID of atom i
@@ -451,7 +451,7 @@ void FixMagnetic::post_force(int vflag)
         last_forces[i][2] = Force_i[2];
       }
     } 
-    printf("Completed force calculation");
+    printf("Completed force calculation \n");
   }
 }
 
