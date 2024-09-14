@@ -137,6 +137,7 @@ void AtomVecSphere::grow(int n)
   x = memory->grow(atom->x,nmax,3,"atom:x");
   v = memory->grow(atom->v,nmax,3,"atom:v");
   f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
+  mag_f = memory->grow(atom->mag_f,nmax*comm->nthreads,3,"atom:mag_f");
 
   radius = memory->grow(atom->radius,nmax,"atom:radius");
   density = memory->grow(atom->density,nmax,"atom:density"); 
@@ -158,6 +159,7 @@ void AtomVecSphere::grow_reset()
   tag = atom->tag; type = atom->type;
   mask = atom->mask; image = atom->image;
   x = atom->x; v = atom->v; f = atom->f;
+  mag_f = atom->mag_f;
   radius = atom->radius; density = atom->density; rmass = atom->rmass; 
   omega = atom->omega; torque = atom->torque;
 }
@@ -540,6 +542,11 @@ int AtomVecSphere::pack_reverse(int n, int first, double *buf)
     buf[m++] = f[i][0];
     buf[m++] = f[i][1];
     buf[m++] = f[i][2];
+
+    buf[m++] = mag_f[i][0];
+    buf[m++] = mag_f[i][1];
+    buf[m++] = mag_f[i][2];
+
     buf[m++] = torque[i][0];
     buf[m++] = torque[i][1];
     buf[m++] = torque[i][2];
@@ -576,6 +583,11 @@ void AtomVecSphere::unpack_reverse(int n, int *list, double *buf)
     f[j][0] += buf[m++];
     f[j][1] += buf[m++];
     f[j][2] += buf[m++];
+
+    mag_f[j][0] += buf[m++];
+    mag_f[j][1] += buf[m++];
+    mag_f[j][2] += buf[m++];
+
     torque[j][0] += buf[m++];
     torque[j][1] += buf[m++];
     torque[j][2] += buf[m++];
@@ -1316,6 +1328,7 @@ bigint AtomVecSphere::memory_usage()
   if (atom->memcheck("x")) bytes += memory->usage(x,nmax,3);
   if (atom->memcheck("v")) bytes += memory->usage(v,nmax,3);
   if (atom->memcheck("f")) bytes += memory->usage(f,nmax*comm->nthreads,3);
+  if (atom->memcheck("mag_f")) bytes += memory->usage(mag_f,nmax*comm->nthreads,3);
 
   if (atom->memcheck("density")) bytes += memory->usage(density,nmax);
   if (atom->memcheck("radius")) bytes += memory->usage(radius,nmax);

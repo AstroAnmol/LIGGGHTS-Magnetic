@@ -79,6 +79,7 @@ class Atom : protected Pointers {
   int *tag,*type,*mask;
   tagint *image;
   double **x,**v,**f;
+  double **mag_f; // pointer to store magnetic force values
 
   int *molecule;
   double *q,**mu;

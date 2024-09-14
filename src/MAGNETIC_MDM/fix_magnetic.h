@@ -34,7 +34,6 @@ class FixMagnetic : public Fix {
   double ex,ey,ez;
   double *rad;
   double **x;
-  int *atom_id;
   int varflag;
   char *xstr,*ystr,*zstr;
   int xvar,yvar,zvar,xstyle,ystyle,zstyle;
@@ -42,7 +41,7 @@ class FixMagnetic : public Fix {
   class NeighList *list;  
   int maxatom;
   double **hfield;
-  double **last_forces; // Store last computed forces
+  // double **last_forces; // Store last computed forces
   bigint N_magforce_timestep; // wait these many timesteps before computing force again
 
   /* ----------------------------------------------------------------

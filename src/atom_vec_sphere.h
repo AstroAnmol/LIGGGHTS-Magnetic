@@ -116,6 +116,7 @@ class AtomVecSphere : public AtomVec {
   int *tag,*type,*mask;
   tagint *image;
   double **x,**v,**f;
+  double **mag_f;
   double *radius,*density,*rmass;
   double **omega,**torque;
   int radvary;

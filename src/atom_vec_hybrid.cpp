@@ -201,6 +201,7 @@ void AtomVecHybrid::grow_reset()
   tag = atom->tag; type = atom->type;
   mask = atom->mask; image = atom->image;
   x = atom->x; v = atom->v; f = atom->f;
+  mag_f = atom-> mag_f;
   omega = atom->omega; angmom = atom->angmom;
 
   for (int k = 0; k < nstyles; k++) styles[k]->grow_reset();
@@ -439,6 +440,10 @@ int AtomVecHybrid::pack_reverse(int n, int first, double *buf)
     buf[m++] = f[i][0];
     buf[m++] = f[i][1];
     buf[m++] = f[i][2];
+
+    buf[m++] = mag_f[i][0];
+    buf[m++] = mag_f[i][1];
+    buf[m++] = mag_f[i][2];
   }
 
   // pack sub-style contributions as contiguous chunks
@@ -461,6 +466,11 @@ void AtomVecHybrid::unpack_reverse(int n, int *list, double *buf)
     f[j][0] += buf[m++];
     f[j][1] += buf[m++];
     f[j][2] += buf[m++];
+
+
+    mag_f[j][0] += buf[m++];
+    mag_f[j][1] += buf[m++];
+    mag_f[j][2] += buf[m++];
   }
 
   // unpack sub-style contributions as contiguous chunks

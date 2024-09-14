@@ -67,6 +67,7 @@ void AtomVecDipole::grow(int n)
   x = memory->grow(atom->x,nmax,3,"atom:x");
   v = memory->grow(atom->v,nmax,3,"atom:v");
   f = memory->grow(atom->f,nmax*comm->nthreads,3,"atom:f");
+  mag_f = memory->grow(atom->mag_f,nmax*comm->nthreads,3,"atom:mag_f");
 
   q = memory->grow(atom->q,nmax,"atom:q");
   mu = memory->grow(atom->mu,nmax,4,"atom:mu");
@@ -85,6 +86,7 @@ void AtomVecDipole::grow_reset()
   tag = atom->tag; type = atom->type;
   mask = atom->mask; image = atom->image;
   x = atom->x; v = atom->v; f = atom->f;
+  mag_f = atom->mag_f;
   q = atom->q; mu = atom->mu;
 }
 
@@ -313,6 +315,10 @@ int AtomVecDipole::pack_reverse(int n, int first, double *buf)
     buf[m++] = f[i][0];
     buf[m++] = f[i][1];
     buf[m++] = f[i][2];
+
+    buf[m++] = mag_f[i][0];
+    buf[m++] = mag_f[i][1];
+    buf[m++] = mag_f[i][2];
   }
   return m;
 }
@@ -329,6 +335,10 @@ void AtomVecDipole::unpack_reverse(int n, int *list, double *buf)
     f[j][0] += buf[m++];
     f[j][1] += buf[m++];
     f[j][2] += buf[m++];
+
+    mag_f[j][0] += buf[m++];
+    mag_f[j][1] += buf[m++];
+    mag_f[j][2] += buf[m++];
   }
 }
 
@@ -907,6 +917,7 @@ bigint AtomVecDipole::memory_usage()
   if (atom->memcheck("x")) bytes += memory->usage(x,nmax,3);
   if (atom->memcheck("v")) bytes += memory->usage(v,nmax,3);
   if (atom->memcheck("f")) bytes += memory->usage(f,nmax*comm->nthreads,3);
+  if (atom->memcheck("mag_f")) bytes += memory->usage(mag_f,nmax*comm->nthreads,3);
 
   if (atom->memcheck("q")) bytes += memory->usage(q,nmax);
   if (atom->memcheck("mu")) bytes += memory->usage(mu,nmax,4);

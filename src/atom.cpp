@@ -108,6 +108,7 @@ Atom::Atom(LAMMPS *lmp) : Pointers(lmp)
   tag = type = mask = NULL;
   image = NULL;
   x = v = f = NULL;
+  mag_f=NULL;
 
   molecule = NULL;
   q = NULL;
@@ -260,6 +261,7 @@ Atom::~Atom()
   memory->destroy(x);
   memory->destroy(v);
   memory->destroy(f);
+  memory->destroy(mag_f);
 
   memory->destroy(q);
   memory->destroy(mu);
@@ -1735,6 +1737,7 @@ void *Atom::extract(const char *name,int &len)
   if (strcmp(name,"x") == 0) return (void *) x;
   if (strcmp(name,"v") == 0) return (void *) v;
   if (strcmp(name,"f") == 0) return (void *) f;
+  if (strcmp(name,"mag_f") == 0) return (void *) mag_f;
   if (strcmp(name,"molecule") == 0) return (void *) molecule;
   if (strcmp(name,"q") == 0) return (void *) q;
   if (strcmp(name,"mu") == 0) return (void *) mu;

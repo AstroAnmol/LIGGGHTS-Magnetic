@@ -74,7 +74,7 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
   fix_susceptibility_(0),
   susceptibility_(0),
   Fix(lmp, narg, arg),
-  last_forces(0),
+  // last_forces(0),
   N_magforce_timestep(0)
 {
   if (narg != 7) error->all(FLERR,"Illegal fix magnetic command");
@@ -122,7 +122,7 @@ FixMagnetic::~FixMagnetic()
   delete [] ystr;
   delete [] zstr;
   memory->destroy(hfield);
-  memory->destroy(last_forces);
+  // memory->destroy(last_forces);
 
   if (susceptibility_)
     delete []susceptibility_;
@@ -240,6 +240,7 @@ void FixMagnetic::post_force(int vflag)
   double sep_ij, SEP_x_ij, SEP_y_ij, SEP_z_ij;
   double **mu = atom->mu;
   double **f = atom->f;
+  double **mag_f = atom->mag_f;
   double *q = atom->q;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
@@ -264,9 +265,9 @@ void FixMagnetic::post_force(int vflag)
   firstsepneigh = list->firstsepneigh;
 
   // Initialize storage for forces
-  if (!last_forces) {
-    memory->create(last_forces, inum, 3, "fix_magnetic:last_forces");
-  }
+  // if (!last_forces) {
+  //   memory->create(last_forces, inum, 3, "fix_magnetic:last_forces");
+  // }
   rad = atom->radius;
   x = atom->x;
 
@@ -274,19 +275,19 @@ void FixMagnetic::post_force(int vflag)
   bigint current_timestep = update->ntimestep;
   
   // printf("if statement for time step check \n");
-  // if (current_timestep % N_magforce_timestep != 0){
-  //   // Apply stored forces
-  //   for (ii = 0; ii < inum; ii++) {
-  //     i = ilist[ii];
-  //     if (mask[i] & groupbit) {
+  if (current_timestep % N_magforce_timestep != 0){
+    // Apply stored forces
+    for (ii = 0; ii < inum; ii++) {
+      i = ilist[ii];
+      if (mask[i] & groupbit) {
 
-  //       f[i][0] += last_forces[i][0];
-  //       f[i][1] += last_forces[i][1];
-  //       f[i][2] += last_forces[i][2];
-  //     }
-  //   }
-  //   return;
-  // }
+        f[i][0] += mag_f[i][0];
+        f[i][1] += mag_f[i][1];
+        f[i][2] += mag_f[i][2];
+      }
+    }
+    return;
+  }
   // printf("Checked for stored forces \n");
 
   if (varflag == CONSTANT) {
@@ -403,7 +404,6 @@ void FixMagnetic::post_force(int vflag)
     printf("Starting force calculation \n");
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
-      // int atom_i_id = atom_id[i]; // Get ID of atom i
     
       if (mask[i] & groupbit) {
         jlist = firstneigh[i];
@@ -446,9 +446,9 @@ void FixMagnetic::post_force(int vflag)
         f[i][2] += Force_i[2];
 
         // Store the computed forces
-        last_forces[i][0] = Force_i[0];
-        last_forces[i][1] = Force_i[1];
-        last_forces[i][2] = Force_i[2];
+        mag_f[i][0] = Force_i[0];
+        mag_f[i][1] = Force_i[1];
+        mag_f[i][2] = Force_i[2];
       }
     } 
     printf("Completed force calculation \n");
