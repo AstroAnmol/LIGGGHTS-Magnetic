@@ -273,21 +273,21 @@ void FixMagnetic::post_force(int vflag)
   // Update the current simulation time
   bigint current_timestep = update->ntimestep;
   
-  printf("if statement for time step check \n");
-  if (current_timestep % N_magforce_timestep != 0){
-    // Apply stored forces
-    for (ii = 0; ii < inum; ii++) {
-      i = ilist[ii];
-      if (mask[i] & groupbit) {
+  // printf("if statement for time step check \n");
+  // if (current_timestep % N_magforce_timestep != 0){
+  //   // Apply stored forces
+  //   for (ii = 0; ii < inum; ii++) {
+  //     i = ilist[ii];
+  //     if (mask[i] & groupbit) {
 
-        f[i][0] += last_forces[i][0];
-        f[i][1] += last_forces[i][1];
-        f[i][2] += last_forces[i][2];
-      }
-    }
-    return;
-  }
-  printf("Checked for stored forces \n");
+  //       f[i][0] += last_forces[i][0];
+  //       f[i][1] += last_forces[i][1];
+  //       f[i][2] += last_forces[i][2];
+  //     }
+  //   }
+  //   return;
+  // }
+  // printf("Checked for stored forces \n");
 
   if (varflag == CONSTANT) {
 
