@@ -296,7 +296,7 @@ void FixMagnetic::post_force(int vflag)
       Moment Calculation
     ------------------------------------------------------------------------- */
 
-    printf("Starting moment calculation \n");
+    // printf("Starting moment calculation \n");
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
 
@@ -396,12 +396,12 @@ void FixMagnetic::post_force(int vflag)
       }
     }
 
-    printf("Completed moment calculation \n");
+    // printf("Completed moment calculation \n");
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
     ------------------------------------------------------------------------- */
 
-    printf("Starting force calculation \n");
+    // printf("Starting force calculation \n");
     for (ii = 0; ii < inum; ii++) {
       i = ilist[ii];
     
@@ -451,7 +451,7 @@ void FixMagnetic::post_force(int vflag)
         mag_f[i][2] = Force_i[2];
       }
     } 
-    printf("Completed force calculation \n");
+    // printf("Completed force calculation \n");
   }
 }
 
