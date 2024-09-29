@@ -29,17 +29,34 @@ class FixMagnetic : public Fix {
   void post_force(int);
   void post_force_respa(int, int, int);
   double memory_usage();
+  bigint N_magforce_timestep; // wait these many timesteps before computing force again
+  std::string model_type; //Store the model type
+
 
  private:
   double ex,ey,ez;
+  double *rad;
+  double **x;
   int varflag;
   char *xstr,*ystr,*zstr;
   int xvar,yvar,zvar,xstyle,ystyle,zstyle;
   int nlevels_respa;
   class NeighList *list;
-  // double nchoosek(int n, int k);
   int maxatom;
   double **hfield;
+  
+  /* ----------------------------------------------------------------
+  variables and functions needed for mag force calculation
+  ----------------------------------------------------------------- */ 
+
+  // variables
+  double p4 = M_PI*4;
+  double mu0 = p4*1e-7;
+
+  //functions
+  Eigen::Matrix3d Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_vec);
+  void compute_magForce();
+
 
 protected:
   class FixPropertyGlobal* fix_susceptibility_;

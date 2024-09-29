@@ -59,6 +59,7 @@ class FixCheckTimestepGran : public Fix {
   void init();
   void end_of_step();
   double compute_vector(int);
+  double v_rel_max_simulation; //max relative velocity detected in simulation
 
  private:
   class Properties* properties;
@@ -70,7 +71,6 @@ class FixCheckTimestepGran : public Fix {
   double rayleigh_time,hertz_time;
   double fraction_rayleigh,fraction_hertz,fraction_skin;
   double fraction_rayleigh_lim,fraction_hertz_lim;
-  double v_rel_max_simulation; //max relative velocity detected in simulation
   double vmax_user;
   double r_min;
   bool warnflag,errorflag;

@@ -3,8 +3,6 @@
     Anmol Sikka
     University of Maryland College Park
     anmolsikka09@gmail.com
-
-    Thanks for the contributions by Thomas Leps
 ------------------------------------------------------------------------- */
 
 #include <iostream>
@@ -48,15 +46,8 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     double mu=(1+susc)*mu0;
     susc_eff=3*susc/(susc+3);
     sep = SEP.norm();
-    double sep_sq = sep*sep;
 
     double c = sep/a;
-
-    // if (sep/a<2){
-    //     SEP= 2*(SEP/sep);
-    //     sep= 2;
-    // }
-
 
     // axis definition
     z_cap=SEP/sep;
@@ -181,7 +172,7 @@ spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Ei
     mjr=M_j.dot(SEP)/sep;
     mumu = M_i.dot(M_j);
 
-    double K = 3e-7/sep_sq/sep_sq;
+    double K = 3e-7/sep/sep/sep/sep;
     
     // F_dip2B[0] = K*(mir*Mj_2Bdip[0]+mjr*Mi_2Bdip[0]+(mumu-5*mjr*mir)*SEP[0]/sep);
     // F_dip2B[1] = K*(mir*Mj_2Bdip[1]+mjr*Mi_2Bdip[1]+(mumu-5*mjr*mir)*SEP[1]/sep);
@@ -270,15 +261,20 @@ double spherical_harmonics::nchoosek(int n, int k){
 
 double spherical_harmonics::fx_int(double theta){
     //-pi/4 (4 C P+3 C U+A W-(B (4 P+U)+A (4 Q+V)) Cos[theta]+(4 B Q-A (4 P+U)+B V+C W) Sin[theta])
+    Eigen::Vector3d magABC, magUVW;
+    Eigen::Vector2d magPQ;
     double A,B,C,P,Q,U,V,W;
-    A=mag_ABC(a,theta)[0];
-    B=mag_ABC(a,theta)[1];
-    C=mag_ABC(a,theta)[2];
-    P=mag_PQ(a,theta)[0];
-    Q=mag_PQ(a,theta)[1];
-    U=mag_UVW(a,theta)[0];
-    V=mag_UVW(a,theta)[1];
-    W=mag_UVW(a,theta)[2];
+    magABC = mag_ABC(a,theta);
+    A=magABC[0];
+    B=magABC[1];
+    C=magABC[2];
+    magPQ = mag_PQ(a,theta);
+    P=magPQ[0];
+    Q=magPQ[1];
+    magUVW = mag_UVW(a,theta);
+    U=magUVW[0];
+    V=magUVW[1];
+    W=magUVW[2];
 
     double term1, term2, term3, res;
     term1 = 4*C*P+3*C*U+A*W;
@@ -291,15 +287,20 @@ double spherical_harmonics::fx_int(double theta){
 
 double spherical_harmonics::fz_int(double theta){
     //pi/8 ((4 A*A-4 B*B-4 C*C+8 P*P-8 Q*Q+8 P U+3 U*U-8 Q V-3 V*V-W*W) Cos[theta]-2 (4 A B+8 P Q+4 Q U+4 P V+3 U V) Sin[theta])
+    Eigen::Vector3d magABC, magUVW;
+    Eigen::Vector2d magPQ;
     double A,B,C,P,Q,U,V,W;
-    A=mag_ABC(a,theta)[0];
-    B=mag_ABC(a,theta)[1];
-    C=mag_ABC(a,theta)[2];
-    P=mag_PQ(a,theta)[0];
-    Q=mag_PQ(a,theta)[1];
-    U=mag_UVW(a,theta)[0];
-    V=mag_UVW(a,theta)[1];
-    W=mag_UVW(a,theta)[2];
+    magABC = mag_ABC(a,theta);
+    A=magABC[0];
+    B=magABC[1];
+    C=magABC[2];
+    magPQ = mag_PQ(a,theta);
+    P=magPQ[0];
+    Q=magPQ[1];
+    magUVW = mag_UVW(a,theta);
+    U=magUVW[0];
+    V=magUVW[1];
+    W=magUVW[2];
     //
     double term2, term3, res;
     term2 = 4*A*A-4*B*B-4*C*C+8*P*P-8*Q*Q+8*P*U+3*U*U-8*Q*V-3*V*V-W*W;
