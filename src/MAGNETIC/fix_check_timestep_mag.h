@@ -31,6 +31,7 @@ class FixCheckTimestepMag : public Fix {
   double dF_by_F;
   class Properties* properties;
   class PairGran* pg;
+  class FixWallGran* fwg;
   class FixPropertyGlobal* fix_susceptibility_;
   double *susceptibility_;
   void calc_magnetic_estims();
@@ -38,6 +39,7 @@ class FixCheckTimestepMag : public Fix {
   double magnetic_time;
   double fraction_magnetic;
   double fraction_magnetic_lim;
+  double vmax_user;
   double v_rel_max_sim; //max relative velocity detected in simulation
 
   bool warnflag,errorflag;

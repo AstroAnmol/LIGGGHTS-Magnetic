@@ -71,7 +71,7 @@ FixCheckTimestepMag::FixCheckTimestepMag(LAMMPS *lmp, int narg, char **arg) :
 {
   warnflag = true;
   errorflag = false;
-//   vmax_user = 0.;
+  vmax_user = 0.;
 
   if (narg < 5) error->all(FLERR,"Illegal fix check/timestep/mag command, not enough arguments");
 
@@ -110,7 +110,11 @@ FixCheckTimestepMag::FixCheckTimestepMag(LAMMPS *lmp, int narg, char **arg) :
           else
             error->fix_error(FLERR,this,"expecting 'yes' or 'no' after 'error'");
           iarg += 2;
-      } else if(strcmp(style,"mesh/surface") == 0) {
+      } else if (strcmp(arg[iarg],"vmax") == 0) {
+          if (narg < iarg+2) error->fix_error(FLERR,this,"not enough arguments for 'vmax'");
+          vmax_user = force->numeric(FLERR,arg[iarg+1]);
+          iarg += 2;
+      }  else if(strcmp(style,"mesh/surface") == 0) {
           char *errmsg = new char[strlen(arg[iarg])+50];
           sprintf(errmsg,"unknown keyword or wrong keyword order: %s", arg[iarg]);
           error->fix_error(FLERR,this,errmsg);
@@ -178,8 +182,14 @@ void FixCheckTimestepMag::init()
   FixMagnetic *fm = (FixMagnetic *) fix_magnetic; 
   mag_timestep_value = fm->N_magforce_timestep; 
 
-  FixCheckTimestepGran *fctg = (FixCheckTimestepGran *) fix_check_timestep_gran;
-  v_rel_max_sim = fctg->v_rel_max_simulation;
+  fwg = NULL;
+  for (int i = 0; i < modify->n_fixes_style("wall/gran"); i++)
+      if(static_cast<FixWallGran*>(modify->find_fix_style("wall/gran",i))->is_mesh_wall())
+        fwg = static_cast<FixWallGran*>(modify->find_fix_style("wall/gran",i));
+
+
+  // FixCheckTimestepGran *fctg = (FixCheckTimestepGran *) fix_check_timestep_gran;
+  // v_rel_max_sim = fctg->v_rel_max_simulation;
 
 }
 
@@ -198,9 +208,9 @@ void FixCheckTimestepMag::end_of_step()
     {
         char errstr[512];
 
-        // if(fraction_magnetic > fraction_magnetic_lim)
+        if(fraction_magnetic > fraction_magnetic_lim)
         {   
-            sprintf(errstr,"time-step is %f %% of magnetic time",v_rel_max_sim*100.);
+            sprintf(errstr,"time-step is %f %% of magnetic time",fraction_magnetic*100.);
             if(errorflag)
                 error->fix_error(FLERR,this,errstr);
             else
@@ -214,13 +224,12 @@ void FixCheckTimestepMag::end_of_step()
 void FixCheckTimestepMag::calc_magnetic_estims()
 {
   int *type = atom->type;
+  double **v = atom->v;
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 
   double mag_time_min = 100000.;
   double mag_time_i;
-
-
 
   if ( !MathExtraLiggghts::compDouble(v_rel_max_sim,0.0) ) {
     for(int i = 0; i < nlocal; i++){
@@ -238,6 +247,83 @@ void FixCheckTimestepMag::calc_magnetic_estims()
 
   MPI_Min_Scalar(mag_time_min,world);
   magnetic_time = mag_time_min;
+
+   //check rayleigh time and vmax of particles
+  // rayleigh_time = BIG;
+  // r_min = BIG;
+  double vmax_sqr = 0;
+  double vmag_sqr;
+  // double rayleigh_time_i;
+
+  for (int i = 0; i < nlocal; i++)
+  {
+    if (mask[i] & groupbit)
+    {
+        // double rad = r[i];
+        // #ifdef SUPERQUADRIC_ACTIVE_FLAG
+        // if(atom->superquadric_flag)
+        //     rad=std::min(std::min(atom->shape[i][0],atom->shape[i][1]),atom->shape[i][2]);        
+        // #endif
+
+        // double shear_mod = Y->get_values()[type[i]-1]/(2.*(nu->get_values()[type[i]-1]+1.));
+        // rayleigh_time_i = M_PI*rad*sqrt(density[i]/shear_mod)/(0.1631*nu->get_values()[type[i]-1]+0.8766);
+        // if(rayleigh_time_i < rayleigh_time) rayleigh_time = rayleigh_time_i;
+
+        vmag_sqr = vectorMag3DSquared(v[i]);
+        if(vmag_sqr > vmax_sqr)
+            vmax_sqr = vmag_sqr;
+
+        // if(rad < r_min) r_min = rad;
+    }
+  }
+
+  // MPI_Min_Scalar(r_min,world);
+  MPI_Max_Scalar(vmax_sqr,world);
+  // MPI_Min_Scalar(rayleigh_time,world);
+
+  //choose vmax_user if larger than value in simulation
+  if(vmax_user*vmax_user > vmax_sqr)
+    vmax_sqr = vmax_user*vmax_user;
+
+  // get vmax of geometry
+  FixMeshSurface ** mesh_list;
+  TriMesh * mesh;
+  double *v_node;
+  double vmax_sqr_mesh=0.;
+  double vmag_sqr_mesh;
+
+  if(fwg)
+  {
+      mesh_list = fwg->mesh_list();
+      for(int imesh = 0; imesh < fwg->n_meshes(); imesh++)
+      {
+          mesh = (mesh_list[imesh])->triMesh();
+          if(mesh->isMoving())
+          {
+              // check if perElementProperty 'v' exists
+              if (mesh->prop().getElementPropertyIndex("v") == -1)
+                  error->one(FLERR,"Internal error - mesh has no perElementProperty 'v' \n");
+              // loop local elements only
+              int sizeMesh = mesh->sizeLocal();
+              for(int itri = 0; itri < sizeMesh; itri++)
+              {
+                  for(int inode = 0; inode < 3; inode++)
+                  {
+                      v_node = mesh->prop().getElementProperty<MultiVectorContainer<double,3,3> >("v")->begin()[itri][inode];
+                      vmag_sqr_mesh = vectorMag3DSquared(v_node);
+                      if(vmag_sqr_mesh > vmax_sqr_mesh)
+                        vmax_sqr_mesh = vmag_sqr_mesh;
+                  }
+              }
+          }
+      }
+  }
+
+  MPI_Max_Scalar(vmax_sqr_mesh,world);
+
+  // decide vmax - either particle-particle or particle-mesh contact
+  v_rel_max_sim = std::max(2.*sqrt(vmax_sqr),sqrt(vmax_sqr) + sqrt(vmax_sqr_mesh));
+
 }
 
 // Function to calculate the magnetic force
