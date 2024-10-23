@@ -283,6 +283,57 @@ Eigen::Matrix3d FixMagnetic::Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_ve
   return mom_mat_ij;
 }
 
+
+/* ----------------------------------------------------------------------
+  Function to compute separtion distance for a give particle pair
+  4F vector with first three elements being the separation vector and last 
+  one being its magnitude
+  gives zero if they are not neighbors
+------------------------------------------------------------------------- */
+
+Eigen::VectorXd FixMagnetic::get_SEP_ij_vec(int x, int y) {
+  
+  int *jlist,*numneigh,**firstneigh;
+  double *sepneigh, **firstsepneigh;
+  
+  numneigh = list->numneigh;
+  firstneigh = list->firstneigh;
+  firstsepneigh = list->firstsepneigh;
+
+  Eigen::VectorXd SEP_vec;
+  SEP_vec = Eigen::VectorXd::Zero(4);
+
+  int i = x;
+
+  // Check if atom_id_1 is a local atom
+  if (i < 0) {
+    return SEP_vec; 
+  }
+  // Get the neighbor list for atom i
+  jlist = firstneigh[i];
+  int jnum = numneigh[i];
+  sepneigh = firstsepneigh[i];
+
+  // Iterate over the neighbors of atom i
+  for (int jj = 0; jj < jnum; jj++) {
+    int j = jlist[jj];
+    j &= NEIGHMASK; // Apply neighbor mask (if necessary)
+
+    // Check if the neighbor's atom ID matches atom_id_2
+    if (j == y) {
+      // std::cout<<"neighbor pair"<<std::endl<<std::endl;
+      SEP_vec(0)=sepneigh[4*jj];
+      SEP_vec(1)=sepneigh[4*jj+1];
+      SEP_vec(2)=sepneigh[4*jj+2];
+      SEP_vec(3)=std::sqrt(sepneigh[4*jj+3]);
+      return SEP_vec; // Atoms are neighbors
+    }
+  }
+
+  return SEP_vec; // Atoms are not neighbors
+}
+
+
 /* ----------------------------------------------------------------------
   Function to compute magnetic force
 ------------------------------------------------------------------------- */
@@ -408,8 +459,8 @@ void FixMagnetic::compute_magForce(){
           mom_mat(3*(jj+1)+1,3*(jj+1)+1)=1/C_j;
           mom_mat(3*(jj+1)+2,3*(jj+1)+2)=1/C_j;
         
-          Eigen::Vector3d SEP_ij_vec;
-          SEP_ij_vec<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
+          Eigen::Vector3d SEP_ij;
+          SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
 
           // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
           // IS LOWER THAN THE SUM OF RADII.
@@ -419,13 +470,13 @@ void FixMagnetic::compute_magForce(){
           double rad_sum_ij = rad[i] + rad[j];
           if (sep_ij/rad_sum_ij<1)
           {
-            SEP_ij_vec=(SEP_ij_vec/sep_ij)*rad_sum_ij;
+            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
             sep_ij=rad_sum_ij;
           }
 
           // i-j 3 X 3 matrix definition
           Eigen::Matrix3d mom_mat_ij;
-          mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij_vec);
+          mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
       
           mom_mat.block(0,(jj+1)*3,3,3)=-mom_mat_ij;
           mom_mat.block((jj+1)*3,0,3,3)=-mom_mat_ij;
@@ -435,31 +486,36 @@ void FixMagnetic::compute_magForce(){
             k =jlist[kk];
             k &=NEIGHMASK;
 
-            Eigen::Vector3d SEP_jk_vec;
-            SEP_jk_vec << x[j][0] - x[k][0], x[j][1] - x[k][1], x[j][2] - x[k][2];
-            double sep_jk = SEP_jk_vec.norm();
+            Eigen::VectorXd SEP_jk_vec = get_SEP_ij_vec(j,k);
 
-            // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-            // IS LOWER THAN THE SUM OF RADII.
-            // CHANGE IT TO SUM OF RADII IF TRUE.
+            if (!SEP_jk_vec.isZero()){
+
+              // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+              // IS LOWER THAN THE SUM OF RADII.
+              // CHANGE IT TO SUM OF RADII IF TRUE.
+
+              Eigen::Vector3d SEP_jk;
+              SEP_jk << SEP_jk_vec(0),SEP_jk_vec(1),SEP_jk_vec(2); 
+              double sep_jk = SEP_jk_vec(3);
           
-            // sum of radii of two particles
-            double rad_sum_jk = rad[j] + rad[k];
-            if (sep_jk/rad_sum_jk<1)
-            {
-              SEP_jk_vec=(SEP_jk_vec/sep_jk)*rad_sum_jk;
-              sep_jk=rad_sum_jk;
-            }
+              // sum of radii of two particles
+              double rad_sum_jk = rad[j] + rad[k];
+              if (sep_jk/rad_sum_jk<1)
+              {
+                SEP_jk=(SEP_jk/sep_jk)*rad_sum_jk;
+                sep_jk=rad_sum_jk;
+              }
 
-            // j-k 3 X 3 matrix definition
-            Eigen::Matrix3d mom_mat_jk;
-            mom_mat_jk=Mom_Mat_ij(sep_jk, SEP_jk_vec);
+              // j-k 3 X 3 matrix definition
+              Eigen::Matrix3d mom_mat_jk;
+              mom_mat_jk=Mom_Mat_ij(sep_jk, SEP_jk);
             
-            mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
-            mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;
+              mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
+              mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;
+            }
           }
         }
-
+        
         //solving the linear system of equations
         mom_vec=mom_mat.ldlt().solve(H_vec);
 
