@@ -31,7 +31,7 @@ class FixMagnetic : public Fix {
   double memory_usage();
   bigint N_magforce_timestep; // wait these many timesteps before computing force again
   std::string model_type; //Store the model type
-
+  std::string moment_calc; //Store the moment calculation type
 
  private:
   double ex,ey,ez;
