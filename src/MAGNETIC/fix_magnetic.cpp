@@ -426,18 +426,20 @@ void FixMagnetic::compute_magForce(){
             j =jlist[jj];
             j &= NEIGHMASK;
 
-            SEP_x_ij=sepneigh[4*jj];
-            SEP_y_ij=sepneigh[4*jj+1];
-            SEP_z_ij=sepneigh[4*jj+2];
-            sep_ij=sepneigh[4*jj+3];
-            sep_ij=std::sqrt(sep_ij);
+            // SEP_x_ij=sepneigh[4*jj];
+            // SEP_y_ij=sepneigh[4*jj+1];
+            // SEP_z_ij=sepneigh[4*jj+2];
+            // sep_ij=sepneigh[4*jj+3];
+            // sep_ij=std::sqrt(sep_ij);
 
             // get susceptibility of particle jth particle
             double susc_j= susceptibility_[type[j]-1];
             double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
         
             Eigen::Vector3d SEP_ij;
-            SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
+            // SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
+            SEP_ij<<x[j][0]-x[i][0],x[j][1]-x[i][1],x[j][2]-x[i][2];
+            sep_ij=SEP_ij.norm();
 
             // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
             // IS LOWER THAN THE SUM OF RADII.
@@ -630,17 +632,25 @@ void FixMagnetic::compute_magForce(){
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
           j &= NEIGHMASK;
-          SEP_x_ij=sepneigh[4*jj];
-          SEP_y_ij=sepneigh[4*jj+1];
-          SEP_z_ij=sepneigh[4*jj+2];
-          sep_ij=sepneigh[4*jj+3];
-          sep_ij=std::sqrt(sep_ij);
-
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
 
           Eigen::Vector3d SEP_ij_vec;
-          SEP_ij_vec<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
+
+          if (moment_calc=="linalg"){
+            SEP_x_ij=sepneigh[4*jj];
+            SEP_y_ij=sepneigh[4*jj+1];
+            SEP_z_ij=sepneigh[4*jj+2];
+            sep_ij=sepneigh[4*jj+3];
+            sep_ij=std::sqrt(sep_ij);
+
+            SEP_ij_vec<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
+          }
+          
+          else{
+            SEP_ij_vec<<x[j][0]-x[i][0],x[j][1]-x[i][1],x[j][2]-x[i][2];
+            sep_ij=SEP_ij_vec.norm();
+          }
 
           // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
           // IS LOWER THAN THE SUM OF RADII.
