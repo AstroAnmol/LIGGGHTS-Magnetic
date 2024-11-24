@@ -438,7 +438,7 @@ void FixMagnetic::compute_magForce(){
         
             Eigen::Vector3d SEP_ij;
             // SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
-            SEP_ij<<x[j][0]-x[i][0],x[j][1]-x[i][1],x[j][2]-x[i][2];
+            SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
             sep_ij=SEP_ij.norm();
 
             // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
@@ -646,9 +646,9 @@ void FixMagnetic::compute_magForce(){
 
             SEP_ij_vec<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
           }
-          
-          else{
-            SEP_ij_vec<<x[j][0]-x[i][0],x[j][1]-x[i][1],x[j][2]-x[i][2];
+
+          else if (moment_calc=="convergence" || moment_calc=="converge_check"){
+            SEP_ij_vec<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
             sep_ij=SEP_ij_vec.norm();
           }
 
