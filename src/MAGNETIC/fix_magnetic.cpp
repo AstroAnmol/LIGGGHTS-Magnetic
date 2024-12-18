@@ -611,12 +611,6 @@ void FixMagnetic::compute_magForce_linalg(){
   Eigen::Vector3d H0;
   H0<<ex,ey,ez;
 
-  // // reallocate hfield array if necessary
-  // if (varflag == ATOM && nlocal > maxatom) {
-  //   maxatom = atom->nmax;
-  //   memory->destroy(hfield);
-  //   memory->create(hfield,maxatom,3,"hfield:hfield");
-  // }
 
   // lists for local atoms on this proc
   inum = list->inum;
