@@ -116,7 +116,7 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
   moment_calc = arg[8];
 
   maxatom = 0;
-  hfield = NULL;
+  // hfield = NULL;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -126,7 +126,7 @@ FixMagnetic::~FixMagnetic()
   delete [] xstr;
   delete [] ystr;
   delete [] zstr;
-  memory->destroy(hfield);
+  // memory->destroy(hfield);
 
   if (susceptibility_)
     delete []susceptibility_;
@@ -238,9 +238,48 @@ void FixMagnetic::setup(int vflag)
 void FixMagnetic::post_force(int vflag)
 { 
 
-   if (model_type == "mdm" || model_type == "inclusion") {
-    compute_magForce();
-  } else {
+  if (model_type == "mdm" || model_type == "inclusion") {
+
+    // Update the current simulation time
+    bigint current_timestep = update->ntimestep;
+
+    // variable declarations
+    int ii, i, inum;
+    int *ilist;
+    double **f = atom->f;
+    double **mag_f = atom->mag_f;
+    int *mask = atom->mask;
+    // local atoms on this proc
+    inum = list->inum;
+    ilist = list->ilist;
+
+    /* ----------------------------------------------------------------------
+      Check if new force needs to be calculated
+      Running the magnetic force model at a different cadence
+    ------------------------------------------------------------------------- */
+    if (current_timestep % N_magforce_timestep != 0){
+      // Apply stored forces
+      for (ii = 0; ii < inum; ii++) {
+        i = ilist[ii];
+        if (mask[i] & groupbit) {
+
+          f[i][0] += mag_f[i][0];
+          f[i][1] += mag_f[i][1];
+          f[i][2] += mag_f[i][2];
+        }
+      }
+    } 
+    else if(moment_calc=="convergence" || moment_calc=="converge_check"){
+      compute_magForce_converge();
+    }
+    else if(moment_calc=="linalg"){
+      compute_magForce_linalg();
+    }
+    else {
+      error->all(FLERR, "Invalid moment calculation method specidifed for fix magnetic");
+    }
+  } 
+  else {
     error->all(FLERR, "Invalid model type specified for fix magnetic");
   }
 }
@@ -332,276 +371,394 @@ Eigen::VectorXd FixMagnetic::get_SEP_ij_vec(int x, int y) {
 
 
 /* ----------------------------------------------------------------------
-  Function to compute magnetic force
+  Function to compute magnetic force using convergence method for MDM
 ------------------------------------------------------------------------- */
 
-void FixMagnetic::compute_magForce(){
-  int i,j,k,ii,jj,kk,inum,jnum;
-  int *ilist,*jlist,*numneigh,**firstneigh,*slist;
-  double *sepneigh, **firstsepneigh;
-  double sep_ij, SEP_x_ij, SEP_y_ij, SEP_z_ij;
+void FixMagnetic::compute_magForce_converge(){
+  int i,ii,j,inum,totnum;
+  int *ilist;
   double **mu = atom->mu;
   double **f = atom->f;
   double **mag_f = atom->mag_f;
   double *q = atom->q;
   int *mask = atom->mask;
-  int nlocal = atom->nlocal;
-  int nghost = atom->nghost;
+  // int nlocal = atom->nlocal;
+  // int nghost = atom->nghost;
   int *type = atom->type;
 
   // External magnetic field
   Eigen::Vector3d H0;
   H0<<ex,ey,ez;
 
-  // reallocate hfield array if necessary
-  if (varflag == ATOM && nlocal > maxatom) {
-    maxatom = atom->nmax;
-    memory->destroy(hfield);
-    memory->create(hfield,maxatom,3,"hfield:hfield");
-  }
+  // // reallocate hfield array if necessary
+  // if (varflag == ATOM && nlocal > maxatom) {
+  //   maxatom = atom->nmax;
+  //   memory->destroy(hfield);
+  //   memory->create(hfield,maxatom,3,"hfield:hfield");
+  // }
 
+  // local atoms on this proc
+  inum = list->inum;
+  ilist = list->ilist;
+
+  // radius and position structs for each atom
+  rad = atom->radius;
+  x = atom->x;
+
+
+  if (varflag == CONSTANT) {
+
+    /* ----------------------------------------------------------------------
+      Moment Calculation
+    ------------------------------------------------------------------------- */
+    for (ii = 0; ii < inum; ii++) {
+      // find the index for ii th local atom
+      i = ilist[ii];
+
+      if (mask[i] & groupbit) {
+
+        // define vector for moment of ith particle
+        Eigen::Vector3d mu_i_vector;
+
+        // get susceptibility of particle ith particle
+        double susc_i= susceptibility_[type[i]-1];
+        double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
+
+        // coefficient for ith particle
+        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*p4/3;
+
+        // dipole moment based on FDM for ith particle
+        mu_i_vector = C_i*H0;
+        mu[i][0] = mu_i_vector[0];
+        mu[i][1] = mu_i_vector[1];
+        mu[i][2] = mu_i_vector[2];
+
+        // loop over all other atoms in the system
+        for (j=0; j<atom->natoms;j++){
+          if(j==i) continue;
+
+          // get susceptibility of particle jth particle
+          double susc_j= susceptibility_[type[j]-1];
+          double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
+
+          // Calculate separation distance
+          Eigen::Vector3d SEP_ij;
+          double sep_ij;
+          SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
+          sep_ij=SEP_ij.norm();
+
+          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+          // IS LOWER THAN THE SUM OF RADII.
+          // CHANGE IT TO SUM OF RADII IF TRUE.
+          
+          // sum of radii of two particles
+          double rad_sum_ij = rad[i] + rad[j];
+          if (sep_ij/rad_sum_ij<1){
+            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
+            sep_ij=rad_sum_ij;
+          }
+
+          // moment of jth particle
+          Eigen::Vector3d mu_j_vector;
+          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];  
+
+          // H_dip due to particle jth at particle ith position
+          Eigen::Vector3d H_dip_j;
+
+          double mu_j_dot_sep= mu_j_vector.dot(SEP_ij/sep_ij);
+
+          H_dip_j = (1/p4/sep_ij/sep_ij/sep_ij)*(3*mu_j_dot_sep*(SEP_ij/sep_ij) - mu_j_vector);
+
+          // Modify dipole moment on ith particle due to jth particle
+          mu_i_vector += C_i*H_dip_j;
+        }
+
+        // Check for convergence based on code by Tom
+        if (moment_calc=="converge_check"){
+          double mu_i_dot_mu_i;
+          mu_i_dot_mu_i=mu_i_vector.dot(mu_i_vector);
+          if (mu_i_dot_mu_i > (4*C_i*C_i*H0.dot(H0))){
+            mu_i_vector = 2*C_i*H0.norm()*mu_i_vector/mu_i_vector.norm();
+          }
+        }
+        mu[i][0]=mu_i_vector[0];
+        mu[i][1]=mu_i_vector[1];
+        mu[i][2]=mu_i_vector[2];
+      }
+    }
+    /* ----------------------------------------------------------------------
+      Force Calculation After Moment Calculation
+    ------------------------------------------------------------------------- */
+    for (ii = 0; ii < inum; ii++){
+      // find the index for ii th local atom
+      i = ilist[ii];
+
+      if (mask[i] & groupbit) {
+        
+        // get susceptibility of ith particle
+        double susc_i= susceptibility_[type[i]-1];
+        // double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
+
+        // get moment of ith particle
+        Eigen::Vector3d mu_i_vector;
+        mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+
+        // Vectors for storing MDM, SHA and Total force for ith particle
+        Eigen::Vector3d Force_mdm_i, Force_SHA_i, Force_tot_i;
+        Force_mdm_i=Eigen::Vector3d::Zero();
+        Force_SHA_i=Eigen::Vector3d::Zero();
+        Force_tot_i=Eigen::Vector3d::Zero();
+
+        // loop over all other atoms in the system
+        for (j=0; j<atom->natoms;j++){
+          if(j==i) continue; // skip for the same particle pair
+        
+          // get susceptibility of particle jth particle
+          double susc_j= susceptibility_[type[j]-1];
+          double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
+          
+          // get moment of jth particle
+          Eigen::Vector3d mu_j_vector;
+          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
+
+          // calculate separation distance 
+          Eigen::Vector3d SEP_ij;
+          double sep_ij;
+          SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
+          sep_ij=SEP_ij.norm();
+
+          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+          // IS LOWER THAN THE SUM OF RADII.
+          // CHANGE IT TO SUM OF RADII IF TRUE.
+          
+          // sum of radii of two particles
+          double rad_sum_ij = rad[i] + rad[j];
+          if (sep_ij/rad_sum_ij<1){
+            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
+            sep_ij=rad_sum_ij;
+          }
+
+          // Calcualte MDM force between i-j pair
+          Eigen::Vector3d Force_mdm_ij;
+          double mu_i_dot_sep = mu_i_vector.dot(SEP_ij)/sep_ij;
+          double mu_j_dot_sep = mu_j_vector.dot(SEP_ij)/sep_ij;
+          double mu_i_dot_mu_j = mu_i_vector.dot(mu_j_vector);
+          
+          double sep_pow4 = std::pow(sep_ij,4);
+          double K = 3*mu0/p4/sep_pow4;
+          Force_mdm_ij = K*(mu_i_dot_sep*mu_j_vector+mu_j_dot_sep*mu_i_vector+(mu_i_dot_mu_j-5*mu_j_dot_sep*mu_i_dot_sep)*SEP_ij/sep_ij);
+
+          // Add i-j MDM force to i the particle total MDM force
+          Force_mdm_i += Force_mdm_ij;
+
+          /* ----------------------------------------------------------------------
+          SPHERICAL HARMONICS (if separation distance is less than x radii)
+          ------------------------------------------------------------------------- */
+          if (model_type == "inclusion"){
+            if (sep_ij/rad[i] < 4){
+              
+              // Call sphertical harmonics class to calculate spherical harmonics
+              spherical_harmonics SHA_i_j(rad[i], susc_i, H0, SEP_ij, mu_i_vector,mu_j_vector);
+
+              Eigen::Vector3d Force_SHA_ij;
+              Force_SHA_ij=SHA_i_j.get_force_actual_coord();
+
+              Eigen::Vector3d Force_dip2B_ij;
+              Force_dip2B_ij=SHA_i_j.get_force_2B_corrections();
+
+              // add the spherical harmonics component and subtract the far-field affect (MDM)
+              Force_SHA_i[0] += Force_SHA_ij[0] - Force_dip2B_ij[0];
+              Force_SHA_i[1] += Force_SHA_ij[1] - Force_dip2B_ij[1];
+              Force_SHA_i[2] += Force_SHA_ij[2] - Force_dip2B_ij[2];
+            }
+          }
+        }
+        // Total force
+        Force_tot_i = Force_mdm_i + Force_SHA_i;
+
+        // fix force for ith atom
+        f[i][0] += Force_tot_i[0];
+        f[i][1] += Force_tot_i[1];
+        f[i][2] += Force_tot_i[2];
+
+        // Store the computed forces
+        mag_f[i][0] = Force_tot_i[0];
+        mag_f[i][1] = Force_tot_i[1];
+        mag_f[i][2] = Force_tot_i[2];
+      }
+    }
+  }
+}
+
+/* ----------------------------------------------------------------------
+  Function to compute magnetic force using linalg method for MDM
+------------------------------------------------------------------------- */
+
+void FixMagnetic::compute_magForce_linalg(){
+  int i,j,k,ii,jj,kk,inum,jnum;
+  int *ilist,*jlist,*numneigh,**firstneigh,*slist;
+  double *sepneigh, **firstsepneigh;
+  double **mu = atom->mu;
+  double **f = atom->f;
+  double **mag_f = atom->mag_f;
+  double *q = atom->q;
+  int *mask = atom->mask;
+  // int nlocal = atom->nlocal;
+  // int nghost = atom->nghost;
+  int *type = atom->type;
+
+  // External magnetic field
+  Eigen::Vector3d H0;
+  H0<<ex,ey,ez;
+
+  // // reallocate hfield array if necessary
+  // if (varflag == ATOM && nlocal > maxatom) {
+  //   maxatom = atom->nmax;
+  //   memory->destroy(hfield);
+  //   memory->create(hfield,maxatom,3,"hfield:hfield");
+  // }
+
+  // lists for local atoms on this proc
   inum = list->inum;
   ilist = list->ilist;
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
   firstsepneigh = list->firstsepneigh;
-
+  
+  // radius and position structs for each atom
   rad = atom->radius;
   x = atom->x;
-
-  // Update the current simulation time
-  bigint current_timestep = update->ntimestep;
   
   
   if (varflag == CONSTANT) {
 
     /* ----------------------------------------------------------------------
-      Check if new force needs to be calculated 
-    ------------------------------------------------------------------------- */
-
-  if (current_timestep % N_magforce_timestep != 0){
-    // Apply stored forces
-    for (ii = 0; ii < inum; ii++) {
-      i = ilist[ii];
-      if (mask[i] & groupbit) {
-
-        f[i][0] += mag_f[i][0];
-        f[i][1] += mag_f[i][1];
-        f[i][2] += mag_f[i][2];
-      }
-    }
-    return;
-  }
-
-    /* ----------------------------------------------------------------------
       Moment Calculation
     ------------------------------------------------------------------------- */
-    if (moment_calc=="convergence" || moment_calc=="converge_check"){
-      for (ii = 0; ii < inum; ii++) {
-        i = ilist[ii];
+    for (ii = 0; ii < inum; ii++) {
+      // find the index for ii th local atom
+      i = ilist[ii];
 
-        if (mask[i] & groupbit) {
-          // get neighbor list for the ith particle
-          jlist = firstneigh[i];
-          jnum = numneigh[i];
-          sepneigh = firstsepneigh[i];
+      if (mask[i] & groupbit) {
+        // get neighbor list for the ith particle
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
+        sepneigh = firstsepneigh[i];
 
-          // define vector for moment of ith particle
-          Eigen::Vector3d mu_i_vector;
+        // define vector for moment of ith particle
+        Eigen::Vector3d mu_i_vector;
 
-          // get susceptibility of particle ith particle
-          double susc_i= susceptibility_[type[i]-1];
-          double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
+        // define 3N x 3N matrix for moment calculation (N is number of neighbors + 1)
+        Eigen::MatrixXd mom_mat(3*(jnum+1), 3*(jnum+1));
+        mom_mat=Eigen::MatrixXd::Zero(3*(jnum+1), 3*(jnum+1));
+        Eigen::VectorXd H_vec(3*(jnum+1));
+        Eigen::VectorXd mom_vec(3*(jnum+1));
 
-          // coefficient for ith particle
-          double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*p4/3;
+        // First three terms of H_vec
+        H_vec.head(3)=H0;//*rad[i]*rad[i]*rad[i]*p4;
 
-          mu_i_vector = C_i*H0;
-          mu[i][0] = mu_i_vector[0];
-          mu[i][1] = mu_i_vector[1];
-          mu[i][2] = mu_i_vector[2];
+        // get susceptibility of particle ith particle
+        double susc_i= susceptibility_[type[i]-1];
+        double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
-          // loop over each neighbor 
-          for (jj = 0; jj<jnum; jj++){          
-            j =jlist[jj];
-            j &= NEIGHMASK;
+        // coefficient for ith particle
+        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*p4/3;
 
-            // SEP_x_ij=sepneigh[4*jj];
-            // SEP_y_ij=sepneigh[4*jj+1];
-            // SEP_z_ij=sepneigh[4*jj+2];
-            // sep_ij=sepneigh[4*jj+3];
-            // sep_ij=std::sqrt(sep_ij);
-
-            // get susceptibility of particle jth particle
-            double susc_j= susceptibility_[type[j]-1];
-            double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
+        // Define diagonal part of the matrix
+        mom_mat(0,0)=1/C_i;
+        mom_mat(1,1)=1/C_i;
+        mom_mat(2,2)=1/C_i;
         
-            Eigen::Vector3d SEP_ij;
-            // SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
-            SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
-            sep_ij=SEP_ij.norm();
+        // loop over each neighbor to get the first row/column of the matrix
+        for (jj = 0; jj<jnum; jj++){          
+          j =jlist[jj];
+          j &= NEIGHMASK;
 
-            // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-            // IS LOWER THAN THE SUM OF RADII.
-            // CHANGE IT TO SUM OF RADII IF TRUE.
-          
-            // sum of radii of two particles
-            double rad_sum_ij = rad[i] + rad[j];
-            if (sep_ij/rad_sum_ij<1){
-              SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
-              sep_ij=rad_sum_ij;
-            }
+          // Get separations distances from neighbor calculations
+          double SEP_x_ij, SEP_y_ij, SEP_z_ij, sep_ij;
+          SEP_x_ij=sepneigh[4*jj];
+          SEP_y_ij=sepneigh[4*jj+1];
+          SEP_z_ij=sepneigh[4*jj+2];
+          sep_ij=sepneigh[4*jj+3];
+          sep_ij=std::sqrt(sep_ij);
 
-            // moment of jth particle
-            Eigen::Vector3d mu_j_vector;
-            mu_j_vector << mu[j][0], mu[j][1], mu[j][2];  
-
-            // H_dip due to particle jth at particle ith position
-            Eigen::Vector3d H_dip_j;
-
-            double mu_j_dot_sep= mu_j_vector.dot(SEP_ij/sep_ij);
-
-            H_dip_j = (1/p4/sep_ij/sep_ij/sep_ij)*(3*mu_j_dot_sep*(SEP_ij/sep_ij) - mu_j_vector);
-
-            mu_i_vector += C_i*H_dip_j;
-          }
-
-          if (moment_calc=="converge_check"){
-            double mu_i_dot_mu_i;
-            mu_i_dot_mu_i=mu_i_vector.dot(mu_i_vector);
-            if (mu_i_dot_mu_i > (4*C_i*C_i*H0.dot(H0))){
-              mu_i_vector = 2*C_i*H0.norm()*mu_i_vector/mu_i_vector.norm();
-            }
-          }
-          mu[i][0]=mu_i_vector[0];
-          mu[i][1]=mu_i_vector[1];
-          mu[i][2]=mu_i_vector[2];
-        }
-      }
-    }
-    else if (moment_calc=="linalg"){
-      for (ii = 0; ii < inum; ii++) {
-        i = ilist[ii];
-
-        if (mask[i] & groupbit) {
-          // get neighbor list for the ith particle
-          jlist = firstneigh[i];
-          jnum = numneigh[i];
-          sepneigh = firstsepneigh[i];
-
-          // define vector for moment of ith particle
-          Eigen::Vector3d mu_i_vector;
-
-          // define 3N x 3N matrix for moment calculation (N is number of neighbors + 1)
-          Eigen::MatrixXd mom_mat(3*(jnum+1), 3*(jnum+1));
-          mom_mat=Eigen::MatrixXd::Zero(3*(jnum+1), 3*(jnum+1));
-          Eigen::VectorXd H_vec(3*(jnum+1));
-          Eigen::VectorXd mom_vec(3*(jnum+1));
-
-          // First three terms of H_vec
-          H_vec.head(3)=H0;//*rad[i]*rad[i]*rad[i]*p4;
-
-          // get susceptibility of particle ith particle
-          double susc_i= susceptibility_[type[i]-1];
-          double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
+          // get susceptibility of particle jth particle
+          double susc_j= susceptibility_[type[j]-1];
+          double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
 
           // coefficient for ith particle
-          double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*p4/3;
+          double C_j = susc_eff_j*rad[j]*rad[j]*rad[j]*p4/3;
 
+          // Define H_vec part
+          H_vec.segment((jj+1)*3,3)=H0;
+          
           // Define diagonal part of the matrix
-          mom_mat(0,0)=1/C_i;
-          mom_mat(1,1)=1/C_i;
-          mom_mat(2,2)=1/C_i;
+          mom_mat(3*(jj+1),3*(jj+1))=1/C_j;
+          mom_mat(3*(jj+1)+1,3*(jj+1)+1)=1/C_j;
+          mom_mat(3*(jj+1)+2,3*(jj+1)+2)=1/C_j;
         
-          // loop over each neighbor to get the first row/column of the matrix
-          for (jj = 0; jj<jnum; jj++){          
-            j =jlist[jj];
-            j &= NEIGHMASK;
+          Eigen::Vector3d SEP_ij;
+          SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
 
-            SEP_x_ij=sepneigh[4*jj];
-            SEP_y_ij=sepneigh[4*jj+1];
-            SEP_z_ij=sepneigh[4*jj+2];
-            sep_ij=sepneigh[4*jj+3];
-            sep_ij=std::sqrt(sep_ij);
-
-            // get susceptibility of particle jth particle
-            double susc_j= susceptibility_[type[j]-1];
-            double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
-
-            // coefficient for ith particle
-            double C_j = susc_eff_j*rad[j]*rad[j]*rad[j]*p4/3;
-
-            // Define H_vec part
-            H_vec.segment((jj+1)*3,3)=H0;
+          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+          // IS LOWER THAN THE SUM OF RADII.
+          // CHANGE IT TO SUM OF RADII IF TRUE.
           
-            // Define diagonal part of the matrix
-            mom_mat(3*(jj+1),3*(jj+1))=1/C_j;
-            mom_mat(3*(jj+1)+1,3*(jj+1)+1)=1/C_j;
-            mom_mat(3*(jj+1)+2,3*(jj+1)+2)=1/C_j;
-        
-            Eigen::Vector3d SEP_ij;
-            SEP_ij<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
+          // sum of radii of two particles
+          double rad_sum_ij = rad[i] + rad[j];
+          if (sep_ij/rad_sum_ij<1){
+            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
+            sep_ij=rad_sum_ij;
+          }
 
-            // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-            // IS LOWER THAN THE SUM OF RADII.
-            // CHANGE IT TO SUM OF RADII IF TRUE.
-          
-            // sum of radii of two particles
-            double rad_sum_ij = rad[i] + rad[j];
-            if (sep_ij/rad_sum_ij<1){
-              SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
-              sep_ij=rad_sum_ij;
-            }
-
-            // i-j 3 X 3 matrix definition
-            Eigen::Matrix3d mom_mat_ij;
-            mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
+          // i-j 3 X 3 matrix definition
+          Eigen::Matrix3d mom_mat_ij;
+          mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
       
-            mom_mat.block(0,(jj+1)*3,3,3)=-mom_mat_ij;
-            mom_mat.block((jj+1)*3,0,3,3)=-mom_mat_ij;
+          mom_mat.block(0,(jj+1)*3,3,3)=-mom_mat_ij;
+          mom_mat.block((jj+1)*3,0,3,3)=-mom_mat_ij;
 
-            // loop over remaining neighbors for other rows
-            for (kk = jj+1; kk < jnum; kk++){
-              k =jlist[kk];
-              k &=NEIGHMASK;
+          // loop over remaining neighbors for other rows
+          for (kk = jj+1; kk < jnum; kk++){
+            k =jlist[kk];
+            k &=NEIGHMASK;
 
-              Eigen::VectorXd SEP_jk_vec = get_SEP_ij_vec(j,k);
+            Eigen::VectorXd SEP_jk_vec = get_SEP_ij_vec(j,k);
 
-              if (!SEP_jk_vec.isZero()){
+            if (!SEP_jk_vec.isZero()){
 
-                // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-                // IS LOWER THAN THE SUM OF RADII.
-                // CHANGE IT TO SUM OF RADII IF TRUE.
+              // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+              // IS LOWER THAN THE SUM OF RADII.
+              // CHANGE IT TO SUM OF RADII IF TRUE.
 
-                Eigen::Vector3d SEP_jk;
-                SEP_jk << SEP_jk_vec(0),SEP_jk_vec(1),SEP_jk_vec(2); 
-                double sep_jk = SEP_jk_vec(3);
+              Eigen::Vector3d SEP_jk;
+              SEP_jk << SEP_jk_vec(0),SEP_jk_vec(1),SEP_jk_vec(2); 
+              double sep_jk = SEP_jk_vec(3);
           
-                // sum of radii of two particles
-                double rad_sum_jk = rad[j] + rad[k];
-                if (sep_jk/rad_sum_jk<1){
-                  SEP_jk=(SEP_jk/sep_jk)*rad_sum_jk;
-                  sep_jk=rad_sum_jk;
-                }
-
-                // j-k 3 X 3 matrix definition
-                Eigen::Matrix3d mom_mat_jk;
-                mom_mat_jk=Mom_Mat_ij(sep_jk, SEP_jk);
-            
-                mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
-                mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;
+              // sum of radii of two particles
+              double rad_sum_jk = rad[j] + rad[k];
+              if (sep_jk/rad_sum_jk<1){
+                SEP_jk=(SEP_jk/sep_jk)*rad_sum_jk;
+                sep_jk=rad_sum_jk;
               }
+
+               // j-k 3 X 3 matrix definition
+              Eigen::Matrix3d mom_mat_jk;
+              mom_mat_jk=Mom_Mat_ij(sep_jk, SEP_jk);
+            
+              mom_mat.block((jj+1)*3,(kk+1)*3,3,3)=-mom_mat_jk;
+              mom_mat.block((kk+1)*3,(jj+1)*3,3,3)=-mom_mat_jk;              
             }
-          }       
-          //solving the linear system of equations
-          mom_vec=mom_mat.colPivHouseholderQr().solve(H_vec);
+          }
+        }       
+        //solving the linear system of equations
+        mom_vec=mom_mat.colPivHouseholderQr().solve(H_vec);
 
-          mu_i_vector=mom_vec.head(3);
+        mu_i_vector=mom_vec.head(3);
 
-          mu[i][0]=mu_i_vector[0];
-          mu[i][1]=mu_i_vector[1];
-          mu[i][2]=mu_i_vector[2];
-        }
+        mu[i][0]=mu_i_vector[0];
+        mu[i][1]=mu_i_vector[1];
+        mu[i][2]=mu_i_vector[2];
       }
     }
     
@@ -609,11 +766,13 @@ void FixMagnetic::compute_magForce(){
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
     ------------------------------------------------------------------------- */
-
     for (ii = 0; ii < inum; ii++) {
+      // find the index for ii th local particle
       i = ilist[ii];
     
       if (mask[i] & groupbit) {
+
+        // get neighbor list for the ith particle
         jlist = firstneigh[i];
         jnum = numneigh[i];
         sepneigh = firstsepneigh[i];
@@ -622,35 +781,37 @@ void FixMagnetic::compute_magForce(){
         double susc_i= susceptibility_[type[i]-1];
         // double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
+
+        // get moment of ith particle
         Eigen::Vector3d mu_i_vector;
         mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+
+        // Vectors for storing MDM, SHA and Total force for ith particle
         Eigen::Vector3d Force_mdm_i, Force_SHA_i, Force_tot_i;
         Force_mdm_i=Eigen::Vector3d::Zero();
         Force_SHA_i=Eigen::Vector3d::Zero();
         Force_tot_i=Eigen::Vector3d::Zero();
 
+        // loop over each neighbor
         for (jj = 0; jj<jnum; jj++)  {
           j =jlist[jj];
           j &= NEIGHMASK;
+
+          // get moment of jth particle
           Eigen::Vector3d mu_j_vector;
           mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
 
+          // get separation distance from the neighbor calculations
           Eigen::Vector3d SEP_ij_vec;
+          double SEP_x_ij, SEP_y_ij, SEP_z_ij, sep_ij;
 
-          if (moment_calc=="linalg"){
-            SEP_x_ij=sepneigh[4*jj];
-            SEP_y_ij=sepneigh[4*jj+1];
-            SEP_z_ij=sepneigh[4*jj+2];
-            sep_ij=sepneigh[4*jj+3];
-            sep_ij=std::sqrt(sep_ij);
+          SEP_x_ij=sepneigh[4*jj];
+          SEP_y_ij=sepneigh[4*jj+1];
+          SEP_z_ij=sepneigh[4*jj+2];
+          sep_ij=sepneigh[4*jj+3];
+          sep_ij=std::sqrt(sep_ij);
 
-            SEP_ij_vec<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
-          }
-
-          else if (moment_calc=="convergence" || moment_calc=="converge_check"){
-            SEP_ij_vec<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
-            sep_ij=SEP_ij_vec.norm();
-          }
+          SEP_ij_vec<<SEP_x_ij,SEP_y_ij,SEP_z_ij;
 
           // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
           // IS LOWER THAN THE SUM OF RADII.
@@ -663,15 +824,18 @@ void FixMagnetic::compute_magForce(){
             sep_ij=rad_sum_ij;
           }
 
+          // Calcualte MDM force between i-j pair
+          Eigen::Vector3d Force_mdm_ij;
           double mu_i_dot_sep = mu_i_vector.dot(SEP_ij_vec)/sep_ij;
           double mu_j_dot_sep = mu_j_vector.dot(SEP_ij_vec)/sep_ij;
           double mu_i_dot_mu_j = mu_i_vector.dot(mu_j_vector);
           
           double sep_pow4 = std::pow(sep_ij,4);
           double K = 3*mu0/p4/sep_pow4;
-          Eigen::Vector3d Force_mdm_ij;
+          
           Force_mdm_ij = K*(mu_i_dot_sep*mu_j_vector+mu_j_dot_sep*mu_i_vector+(mu_i_dot_mu_j-5*mu_j_dot_sep*mu_i_dot_sep)*SEP_ij_vec/sep_ij);
-
+          
+          // Add i-j MDM force to i the particle total MDM force
           Force_mdm_i += Force_mdm_ij;
 
           /* ----------------------------------------------------------------------

@@ -43,7 +43,7 @@ class FixMagnetic : public Fix {
   int nlevels_respa;
   class NeighList *list;
   int maxatom;
-  double **hfield;
+  // double **hfield;
   
   /* ----------------------------------------------------------------
   variables and functions needed for mag force calculation
@@ -55,7 +55,8 @@ class FixMagnetic : public Fix {
 
   //functions
   Eigen::Matrix3d Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_vec);
-  void compute_magForce();
+  void compute_magForce_linalg();
+  void compute_magForce_converge();
   Eigen::VectorXd get_SEP_ij_vec(int i, int j);
 
 protected:
