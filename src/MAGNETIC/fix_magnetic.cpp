@@ -635,9 +635,11 @@ void FixMagnetic::compute_magForce_linalg(){
       Moment Calculation
     ------------------------------------------------------------------------- */
 
-    // CHANGING TO COMPUTE USING proc 0
+    /* ----------------------------------------------------------------------
+      Compute Local Matrices
+    ------------------------------------------------------------------------- */
 
-    // Eigen matrices
+    // Local matrices
     Eigen::MatrixXd local_matrix(3 * natoms, 3 * inum);
     local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum); 
 
@@ -661,7 +663,7 @@ void FixMagnetic::compute_magForce_linalg(){
           // find global index of ith particle
           int j_index = atom->tag[j];
 
-          if ((i_index-1)<(j_index-1)){
+          if ((i_index-1)!=(j_index-1)){
             // Calculate separation distance
             Eigen::Vector3d SEP_ij;
             double sep_ij;
@@ -695,40 +697,41 @@ void FixMagnetic::compute_magForce_linalg(){
       }
     }
 
-
-
     /* ----------------------------------------------------------------------
       Gather Local Matrices on proc 0 and find moments for each particle
     ------------------------------------------------------------------------- */
 
     // Receive counts and displacements for the data
+    int *num_local = new int[comm->nprocs];
     int *recvcounts = new int[comm->nprocs];
-    int *displs = new int[comm->nprocs];
-    MPI_Allgather(&nlocal, 1, MPI_INT, recvcounts, 1, MPI_INT, world);
+    int *sendcounts = new int[comm->nprocs];
+    int *displs_recv = new int[comm->nprocs];
+    int *displs_send = new int[comm->nprocs];
+    MPI_Allgather(&nlocal, 1, MPI_INT, num_local, 1, MPI_INT, world);
 
-    for (int i = 0; i < comm->nprocs; i++) {
-      recvcounts[i] *= 3*3*natoms; // Multiply each count by 3
+
+    displs_recv[0] = 0;
+    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+      recvcounts[i_proc] = 3*3*natoms*num_local[i_proc];
+      if (i_proc>0){
+        displs_recv[i_proc] = displs_recv[i_proc - 1] + recvcounts[i_proc - 1];
+      }
     }
 
-    displs[0] = 0;
-    for (int i = 1; i < comm->nprocs; i++) {
-      displs[i] = displs[i - 1] + recvcounts[i - 1];
-    }
-
-    // for (int i = 0; i < comm->nprocs; i++) {
-    //   if (comm->me == i) {
-    //     // std::cout<<"proc number"<<i<<std::endl;
-    //     // std::cout<<"recvcount [i]"<<recvcounts[i]<<"displs [i]"<<displs[i]<<std::endl;
-    //     // for (int ii = 0; ii < natoms; ii++)
-    //     // {
-    //     //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
-    //     // }
+    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+      if (comm->me == i_proc) {
+        // std::cout<<"proc number"<<i_proc<<std::endl;
+        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+        // for (int ii = 0; ii < natoms; ii++)
+        // {
+        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+        // }
         
-    //     std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-    //     std::cout << local_matrix << std::endl;
-    //   }
-    //   MPI_Barrier(world); // Ensure synchronized printing
-    // }
+        std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+        std::cout << local_matrix << std::endl;
+      }
+      MPI_Barrier(world); // Ensure synchronized printing
+    }
     
 
     // Defining the global moment_matrix
@@ -740,54 +743,76 @@ void FixMagnetic::compute_magForce_linalg(){
     
     // Gather the data
 
-    MPI_Gatherv(local_matrix.data(), local_matrix.size(), MPI_DOUBLE, moment_matrix.data(), recvcounts, displs, MPI_DOUBLE, 0, world);
+    MPI_Gatherv(local_matrix.data(), local_matrix.size(), MPI_DOUBLE, moment_matrix.data(), recvcounts, displs_recv, MPI_DOUBLE, 0, world);
 
     // delete memory
     delete []recvcounts;
-    delete []displs;
-
-    // use the matrix for linear solver on proc 0
+    delete []displs_recv;
 
     // define the moment_vec for all atoms
     Eigen::VectorXd mom_vec(3*(natoms));
+
+    // use the matrix for linear solver on proc 0
 
     // moment_matrix * mom_vec = H_vec
     if (comm->me==0){
 
       // H0 Vector
       Eigen::VectorXd H_vec(3*(natoms));
-
       H_vec = H0.replicate(natoms,1);
-      moment_matrix=Eigen::MatrixXd(moment_matrix.selfadjointView<Eigen::Lower>());
-      // std::cout<<"Momemnt Matrix"<<std::endl;
-      // std::cout<<moment_matrix<<std::endl<<std::endl<<std::endl;
+      
+      std::cout<<"Momemnt Matrix"<<std::endl;
+      std::cout<<moment_matrix<<std::endl<<std::endl<<std::endl;
 
       mom_vec=moment_matrix.colPivHouseholderQr().solve(H_vec);
 
-      // std::cout<<"Moment Vector"<<mom_vec.transpose()<<std::endl<<std::endl<<std::endl;
-      
-
+      std::cout<<"Moment Vector"<<mom_vec.transpose()<<std::endl<<std::endl<<std::endl;
     }
 
+    /* ----------------------------------------------------------------------
+      Distribute moments to processors
+    ------------------------------------------------------------------------- */
 
-    MPI_Bcast(mom_vec.data(), mom_vec.size(), MPI_DOUBLE, 0, world);
+    // Calculate sendcounts and displacements
+    displs_send[0] = 0;
 
-    // for (int i = 0; i < comm->nprocs; i++) {
-    //   if (comm->me == i) {
-    //     std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-    //     std::cout << mom_vec.transpose() << std::endl;
-    //   }
-    //   MPI_Barrier(world); // Ensure synchronized printing
-    // }
+    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+      sendcounts[i_proc] = 3*num_local[i_proc];
+      if (i_proc>0){
+        displs_send[i_proc] = displs_send[i_proc - 1] + sendcounts[i_proc - 1];
+      }      
+    }
+
+    // Create a receive buffer on each processor
+    Eigen::VectorXd local_mom_vec(sendcounts[comm->me]); // Allocate on each processor
+
+    // Scatter the vector
+    MPI_Scatterv(mom_vec.data(), sendcounts, displs_send, MPI_DOUBLE, local_mom_vec.data(), sendcounts[comm->me], MPI_DOUBLE, 0, world);
+    
+    // delete memory
+    delete []sendcounts;
+    delete []displs_send;
+    
+    // MPI_Bcast(mom_vec.data(), mom_vec.size(), MPI_DOUBLE, 0, world);
+
+    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+      if (comm->me == i_proc) {
+        std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+        std::cout << local_mom_vec.transpose() << std::endl;
+        std::cout << "Displ " << displs_send[i_proc-1]<<std::endl;
+        std::cout << "Sendcounts " << sendcounts[i_proc-1]<<std::endl;
+      }
+      MPI_Barrier(world); // Ensure synchronized printing
+    }
     for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
       i = ilist[ii];
-      int i_index=atom->tag[i];
+      // int i_index=atom->tag[i];
       if (mask[i] & groupbit) {
 
         Eigen::Vector3d mu_i_vector;
 
-        mu_i_vector=mom_vec.segment(3*(i_index-1),3);
+        mu_i_vector=local_mom_vec.segment(3*(ii),3);
         mu[i][0]=mu_i_vector[0];
         mu[i][1]=mu_i_vector[1];
         mu[i][2]=mu_i_vector[2];
