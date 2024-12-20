@@ -639,6 +639,8 @@ void FixMagnetic::compute_magForce_linalg(){
       Compute Local Matrices
     ------------------------------------------------------------------------- */
 
+    std::cout<< "STARTING MOMENT CALCULATION" <<std::endl;
+
     // Local matrices
     Eigen::MatrixXd local_matrix(3 * natoms, 3 * inum);
     local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum); 
@@ -697,6 +699,9 @@ void FixMagnetic::compute_magForce_linalg(){
       }
     }
 
+
+    std::cout<< "Local moment matrix generated" <<std::endl;
+
     /* ----------------------------------------------------------------------
       Gather Local Matrices on proc 0 and find moments for each particle
     ------------------------------------------------------------------------- */
@@ -749,6 +754,8 @@ void FixMagnetic::compute_magForce_linalg(){
     delete []recvcounts;
     delete []displs_recv;
 
+    std::cout<< "Global moment matrix gathered" <<std::endl;
+
     // define the moment_vec for all atoms
     Eigen::VectorXd mom_vec(3*(natoms));
 
@@ -768,6 +775,8 @@ void FixMagnetic::compute_magForce_linalg(){
 
       // std::cout<<"Moment Vector"<<mom_vec.transpose()<<std::endl<<std::endl<<std::endl;
     }
+
+     std::cout<< "Solved moments" <<std::endl;
 
     /* ----------------------------------------------------------------------
       Distribute moments to processors
@@ -792,6 +801,8 @@ void FixMagnetic::compute_magForce_linalg(){
     // delete memory
     delete []sendcounts;
     delete []displs_send;
+
+     std::cout<< "local moments scattered" <<std::endl;
     
     // MPI_Bcast(mom_vec.data(), mom_vec.size(), MPI_DOUBLE, 0, world);
 
