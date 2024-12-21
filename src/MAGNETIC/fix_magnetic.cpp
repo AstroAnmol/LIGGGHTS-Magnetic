@@ -723,20 +723,20 @@ void FixMagnetic::compute_magForce_linalg(){
       }
     }
 
-    // for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
-    //   if (comm->me == i_proc) {
-    //     // std::cout<<"proc number"<<i_proc<<std::endl;
-    //     // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
-    //     // for (int ii = 0; ii < natoms; ii++)
-    //     // {
-    //     //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
-    //     // }
-        
-    //     std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-    //     std::cout << local_matrix << std::endl;
-    //   }
-    //   MPI_Barrier(world); // Ensure synchronized printing
-    // }
+    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+      if (comm->me == i_proc) {
+        // std::cout<<"proc number"<<i_proc<<std::endl;
+        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+        // for (int ii = 0; ii < natoms; ii++)
+        // {
+        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+        // }
+        std::cout<<"Processor"<<comm->me<<"pars"<<num_local[i_proc]<<std::endl;
+        // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+        // std::cout << local_matrix << std::endl;
+      }
+      MPI_Barrier(world); // Ensure synchronized printing
+    }
     
 
     // Defining the global moment_matrix
@@ -754,8 +754,6 @@ void FixMagnetic::compute_magForce_linalg(){
     delete []recvcounts;
     delete []displs_recv;
 
-    std::cout<< "Global moment matrix gathered" <<std::endl;
-
     // define the moment_vec for all atoms
     Eigen::VectorXd mom_vec(3*(natoms));
 
@@ -763,6 +761,8 @@ void FixMagnetic::compute_magForce_linalg(){
 
     // moment_matrix * mom_vec = H_vec
     if (comm->me==0){
+      
+      std::cout<< "Global moment matrix gathered" <<std::endl;
 
       // H0 Vector
       Eigen::VectorXd H_vec(3*(natoms));
@@ -773,10 +773,10 @@ void FixMagnetic::compute_magForce_linalg(){
 
       mom_vec=moment_matrix.colPivHouseholderQr().solve(H_vec);
 
+      std::cout<< "Solved moments" <<std::endl;
+
       // std::cout<<"Moment Vector"<<mom_vec.transpose()<<std::endl<<std::endl<<std::endl;
     }
-
-     std::cout<< "Solved moments" <<std::endl;
 
     /* ----------------------------------------------------------------------
       Distribute moments to processors
@@ -802,7 +802,7 @@ void FixMagnetic::compute_magForce_linalg(){
     delete []sendcounts;
     delete []displs_send;
 
-     std::cout<< "local moments scattered" <<std::endl;
+    std::cout<< "local moments scattered" <<std::endl;
     
     // MPI_Bcast(mom_vec.data(), mom_vec.size(), MPI_DOUBLE, 0, world);
 
@@ -831,6 +831,7 @@ void FixMagnetic::compute_magForce_linalg(){
       }      
     }
     
+    std::cout<< "particle moment assigned" <<std::endl;
     
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
