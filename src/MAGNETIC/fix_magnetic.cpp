@@ -641,6 +641,21 @@ void FixMagnetic::compute_magForce_linalg(){
 
     std::cout<< "STARTING MOMENT CALCULATION" <<std::endl;
 
+    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+      if (comm->me == i_proc) {
+        // std::cout<<"proc number"<<i_proc<<std::endl;
+        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+        // for (int ii = 0; ii < natoms; ii++)
+        // {
+        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+        // }
+        std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
+        // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+        // std::cout << local_matrix << std::endl;
+      }
+      MPI_Barrier(world); // Ensure synchronized printing
+    }
+
     // Local matrices
     Eigen::MatrixXd local_matrix(3 * natoms, 3 * inum);
     local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum); 
