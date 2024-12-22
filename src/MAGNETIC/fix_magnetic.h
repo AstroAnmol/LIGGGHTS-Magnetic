@@ -50,14 +50,14 @@ class FixMagnetic : public Fix {
   ----------------------------------------------------------------- */ 
 
   // variables
-  double p4 = M_PI*4;
-  double mu0 = p4*1e-7;
+  double P4 = M_PI*4;
+  double MU0 = P4*1e-7;
 
   //functions
   Eigen::Matrix3d Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_vec);
   void compute_magForce_linalg();
   void compute_magForce_converge();
-  Eigen::VectorXd get_SEP_ij_vec(int i, int j);
+  // Eigen::VectorXd get_SEP_ij_vec(int i, int j);
 
 protected:
   class FixPropertyGlobal* fix_susceptibility_;

@@ -17,7 +17,7 @@ class spherical_harmonics{
         double susc; // magnetic susceptibility
         double susc_eff; //effective susceptibility
         double hmag; // magneitc field mag (A/m)
-        double mu0=4*M_PI*1e-07;
+        double MU0=4*M_PI*1e-07;
         int L; // number of multipoles used
         double H_prll, H_perp;
         Eigen::Vector3d H0;

@@ -206,7 +206,7 @@ void FixMagnetic::init()
   fix_susceptibility_ =
     static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
 
-  // pre-calculate susceptibility for possible contact material combinations
+  // pre-calculate susceptibility 
   for(int i=1;i< max_type+1; i++)  
       {
           susceptibility_[i-1] = fix_susceptibility_->compute_vector(i-1);
@@ -313,8 +313,8 @@ Eigen::Matrix3d FixMagnetic::Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_ve
   double sep_pow3 = std::pow(sep_ij,3);
   double sep_pow5 = std::pow(sep_ij,5);
 
-  double p4_sep_ij_pow5_div_3=(p4*sep_pow5)/3;
-  double inv_p4_sep_ij_pow3=1/(p4*sep_pow3);
+  double p4_sep_ij_pow5_div_3=(P4*sep_pow5)/3;
+  double inv_p4_sep_ij_pow3=1/(P4*sep_pow3);
 
   // i-j 3 X 3 matrix definition
   Eigen::Matrix3d mom_mat_ij;
@@ -322,64 +322,13 @@ Eigen::Matrix3d FixMagnetic::Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_ve
   return mom_mat_ij;
 }
 
-
-/* ----------------------------------------------------------------------
-  Function to compute separtion distance for a give particle pair
-  4F vector with first three elements being the separation vector and last 
-  one being its magnitude
-  gives zero if they are not neighbors
-------------------------------------------------------------------------- */
-
-Eigen::VectorXd FixMagnetic::get_SEP_ij_vec(int x, int y) {
-  
-  int *jlist,*numneigh,**firstneigh;
-  double *sepneigh, **firstsepneigh;
-  
-  numneigh = list->numneigh;
-  firstneigh = list->firstneigh;
-  firstsepneigh = list->firstsepneigh;
-
-  Eigen::VectorXd SEP_vec;
-  SEP_vec = Eigen::VectorXd::Zero(4);
-
-  int i = x;
-
-  // Check if atom_id_1 is a local atom
-  if (i < 0) {
-    return SEP_vec; 
-  }
-  // Get the neighbor list for atom i
-  jlist = firstneigh[i];
-  int jnum = numneigh[i];
-  sepneigh = firstsepneigh[i];
-
-  // Iterate over the neighbors of atom i
-  for (int jj = 0; jj < jnum; jj++) {
-    int j = jlist[jj];
-    j &= NEIGHMASK; // Apply neighbor mask (if necessary)
-
-    // Check if the neighbor's atom ID matches atom_id_2
-    if (j == y) {
-      // std::cout<<"neighbor pair"<<std::endl<<std::endl;
-      SEP_vec(0)=sepneigh[4*jj];
-      SEP_vec(1)=sepneigh[4*jj+1];
-      SEP_vec(2)=sepneigh[4*jj+2];
-      SEP_vec(3)=std::sqrt(sepneigh[4*jj+3]);
-      return SEP_vec; // Atoms are neighbors
-    }
-  }
-
-  return SEP_vec; // Atoms are not neighbors
-}
-
-
 /* ----------------------------------------------------------------------
   Function to compute magnetic force using convergence method for MDM
 ------------------------------------------------------------------------- */
 
 void FixMagnetic::compute_magForce_converge(){
-  int i,ii,j,inum,totnum;
-  int *ilist;
+  int i,ii,j,jj,inum, jnum;
+  int *ilist, *jlist, *numneigh, **firstneigh;
   double **mu = atom->mu;
   double **f = atom->f;
   double **mag_f = atom->mag_f;
@@ -403,6 +352,8 @@ void FixMagnetic::compute_magForce_converge(){
   // local atoms on this proc
   inum = list->inum;
   ilist = list->ilist;
+  numneigh = list->numneigh;
+  firstneigh = list->firstneigh;
 
   // radius and position structs for each atom
   rad = atom->radius;
@@ -413,7 +364,15 @@ void FixMagnetic::compute_magForce_converge(){
 
     /* ----------------------------------------------------------------------
       Moment Calculation
+       First for loop to converge over number of steps
     ------------------------------------------------------------------------- */
+
+    // // Maximum number of steps 
+    // int max_step = 20;
+    // for (int i_step = 0; i_step< max_step; i_step++){
+      
+    // }
+    
     for (ii = 0; ii < inum; ii++) {
       // find the index for ii th local atom
       i = ilist[ii];
@@ -428,17 +387,22 @@ void FixMagnetic::compute_magForce_converge(){
         double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
         // coefficient for ith particle
-        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*p4/3;
+        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*P4/3;
 
         // dipole moment based on FDM for ith particle
         mu_i_vector = C_i*H0;
         mu[i][0] = mu_i_vector[0];
         mu[i][1] = mu_i_vector[1];
         mu[i][2] = mu_i_vector[2];
+        
+        // get neighbor list for the ith particle
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
 
-        // loop over all other atoms in the system
-        for (j=0; j<atom->natoms;j++){
-          if(j==i) continue;
+        // loop over all the neighbors in the system
+        for (jj=0; jj<jnum;jj++){
+          
+          j=jlist[jj];
 
           // get susceptibility of particle jth particle
           double susc_j= susceptibility_[type[j]-1];
@@ -470,7 +434,7 @@ void FixMagnetic::compute_magForce_converge(){
 
           double mu_j_dot_sep= mu_j_vector.dot(SEP_ij/sep_ij);
 
-          H_dip_j = (1/p4/sep_ij/sep_ij/sep_ij)*(3*mu_j_dot_sep*(SEP_ij/sep_ij) - mu_j_vector);
+          H_dip_j = (1/P4/sep_ij/sep_ij/sep_ij)*(3*mu_j_dot_sep*(SEP_ij/sep_ij) - mu_j_vector);
 
           // Modify dipole moment on ith particle due to jth particle
           mu_i_vector += C_i*H_dip_j;
@@ -512,9 +476,13 @@ void FixMagnetic::compute_magForce_converge(){
         Force_SHA_i=Eigen::Vector3d::Zero();
         Force_tot_i=Eigen::Vector3d::Zero();
 
-        // loop over all other atoms in the system
-        for (j=0; j<atom->natoms;j++){
-          if(j==i) continue; // skip for the same particle pair
+        // get neighbor list for the ith particle
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
+
+        // loop over all the neighbors in the system
+        for (jj=0; jj<jnum;jj++){
+          j=jlist[jj];
         
           // get susceptibility of particle jth particle
           double susc_j= susceptibility_[type[j]-1];
@@ -548,7 +516,7 @@ void FixMagnetic::compute_magForce_converge(){
           double mu_i_dot_mu_j = mu_i_vector.dot(mu_j_vector);
           
           double sep_pow4 = std::pow(sep_ij,4);
-          double K = 3*mu0/p4/sep_pow4;
+          double K = 3*MU0/P4/sep_pow4;
           Force_mdm_ij = K*(mu_i_dot_sep*mu_j_vector+mu_j_dot_sep*mu_i_vector+(mu_i_dot_mu_j-5*mu_j_dot_sep*mu_i_dot_sep)*SEP_ij/sep_ij);
 
           // Add i-j MDM force to i the particle total MDM force
@@ -598,9 +566,8 @@ void FixMagnetic::compute_magForce_converge(){
 ------------------------------------------------------------------------- */
 
 void FixMagnetic::compute_magForce_linalg(){
-  int i,j,k,ii,jj,inum,jnum;
-  int *ilist,*jlist,*numneigh,**firstneigh,*slist;
-  // double *sepneigh, **firstsepneigh;
+  int i,j,ii,jj,inum,jnum;
+  int *ilist,*jlist,*numneigh,**firstneigh;
   double **mu = atom->mu;
   double **f = atom->f;
   double **mag_f = atom->mag_f;
@@ -622,12 +589,10 @@ void FixMagnetic::compute_magForce_linalg(){
   ilist = list->ilist;
   numneigh = list->numneigh;
   firstneigh = list->firstneigh;
-  // firstsepneigh = list->firstsepneigh;
   
   // radius and position structs for each atom
   rad = atom->radius;
   x = atom->x;
-  
   
   if (varflag == CONSTANT) {
 
@@ -639,25 +604,32 @@ void FixMagnetic::compute_magForce_linalg(){
       Compute Local Matrices
     ------------------------------------------------------------------------- */
 
-    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
-      if (comm->me == i_proc) {
-        // std::cout<<"proc number"<<i_proc<<std::endl;
-        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
-        // for (int ii = 0; ii < natoms; ii++)
-        // {
-        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
-        // }
-        std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
-        std::cout<< "STARTING MOMENT CALCULATION" <<std::endl;
-        // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-        // std::cout << local_matrix << std::endl;
-      }
-      MPI_Barrier(world); // Ensure synchronized printing
-    }
+    // for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+    //   if (comm->me == i_proc) {
+    //     // std::cout<<"proc number"<<i_proc<<std::endl;
+    //     // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+    //     // for (int ii = 0; ii < natoms; ii++)
+    //     // {
+    //     //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+    //     // }
+    //     std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
+    //     for ( j = 0; j < natoms; j++){
+    //       int j_index = atom->tag[j];
+    //       std::cout<< "j "<<j<< "j_index "<< j_index<<std::endl;
+    //       std::cout<<"pos"<<x[j][2]<<std::endl;
+    //     }
+        
+        
+    //     // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+    //     // std::cout << local_matrix << std::endl;
+    //   }
+    //   MPI_Barrier(world); // Ensure synchronized printing
+    // }
 
     // Local matrices
-    Eigen::MatrixXd local_matrix(3 * natoms, 3 * inum);
-    local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum); 
+    Eigen::MatrixXd local_matrix;
+    
+    local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum);
 
     for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
@@ -669,65 +641,67 @@ void FixMagnetic::compute_magForce_linalg(){
         double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
         // coefficient for ith particle
-        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*p4/3;
+        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*P4/3;
 
         // find global index of ith particle
         int i_index = atom->tag[i];
 
-        for (j = 0; j < natoms; j++){
+        // Calcuate matrix diagonals
+        local_matrix.block((i_index-1)*3,ii*3,3,3)=1/C_i*Eigen::Matrix3d::Identity();
+        
+        // get neighbor list for the ith particle
+        jlist = firstneigh[i];
+        jnum = numneigh[i];
+
+        // go over all the neighbors for non-diagnonal matrices
+        for (jj = 0; jj < jnum; jj++){
+
+          j=jlist[jj];
 
           // find global index of ith particle
           int j_index = atom->tag[j];
-
-          if ((i_index-1)!=(j_index-1)){
-            // Calculate separation distance
-            Eigen::Vector3d SEP_ij;
-            double sep_ij;
-            SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
-            sep_ij=SEP_ij.norm();
-            
-            // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-            // IS LOWER THAN THE SUM OF RADII.
-            // CHANGE IT TO SUM OF RADII IF TRUE.
           
-            // sum of radii of two particles
-            double rad_sum_ij = rad[i] + rad[j];
-            if (sep_ij/rad_sum_ij<1){
-              SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
-              sep_ij=rad_sum_ij;
-            }
-
-            // i-j 3 X 3 matrix definition
-            Eigen::Matrix3d mom_mat_ij;
-            mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
-
-            local_matrix.block((j_index-1)*3,ii*3,3,3)=-mom_mat_ij;
-
+          // Calculate separation distance
+          Eigen::Vector3d SEP_ij;
+          double sep_ij;
+          SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
+          sep_ij=SEP_ij.norm();
+          
+          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+          // IS LOWER THAN THE SUM OF RADII.
+          // CHANGE IT TO SUM OF RADII IF TRUE.
+        
+          // sum of radii of two particles
+          double rad_sum_ij = rad[i] + rad[j];
+          if (sep_ij/rad_sum_ij<1){
+            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
+            sep_ij=rad_sum_ij;
           }
 
-          // Calcuate matrix diagonals
-          else if ((i_index-1)==(j_index-1)){
-            local_matrix.block((j_index-1)*3,ii*3,3,3)=1/C_i*Eigen::Matrix3d::Identity();
-          }
+          // i-j 3 X 3 matrix definition
+          Eigen::Matrix3d mom_mat_ij;
+          mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
+
+          local_matrix.block((j_index-1)*3,ii*3,3,3)=-mom_mat_ij;
         }
       }
     }
 
-    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
-      if (comm->me == i_proc) {
-        // std::cout<<"proc number"<<i_proc<<std::endl;
-        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
-        // for (int ii = 0; ii < natoms; ii++)
-        // {
-        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
-        // }
-        std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
-        std::cout<< "Local moment matrix generated" <<std::endl;
-        // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-        // std::cout << local_matrix << std::endl;
-      }
-      MPI_Barrier(world); // Ensure synchronized printing
-    }
+    // for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+    //   if (comm->me == i_proc) {
+    //     // std::cout<<"proc number"<<i_proc<<std::endl;
+    //     // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+    //     // for (int ii = 0; ii < natoms; ii++)
+    //     // {
+    //     //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+    //     // }
+    //     std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
+    //     // std::cout<< "Local moment matrix generated" <<std::endl;
+    //     std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+    //     std::cout << local_matrix << std::endl;
+    //   }
+    //   MPI_Barrier(world); // Ensure synchronized printing
+    // }
     
 
     /* ----------------------------------------------------------------------
@@ -751,20 +725,20 @@ void FixMagnetic::compute_magForce_linalg(){
       }
     }
 
-    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
-      if (comm->me == i_proc) {
-        // std::cout<<"proc number"<<i_proc<<std::endl;
-        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
-        // for (int ii = 0; ii < natoms; ii++)
-        // {
-        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
-        // }
-        std::cout<<"Processor"<<comm->me<<"pars"<<num_local[i_proc]<<std::endl;
-        // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-        // std::cout << local_matrix << std::endl;
-      }
-      MPI_Barrier(world); // Ensure synchronized printing
-    }
+    // for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+    //   if (comm->me == i_proc) {
+    //     // std::cout<<"proc number"<<i_proc<<std::endl;
+    //     // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+    //     // for (int ii = 0; ii < natoms; ii++)
+    //     // {
+    //     //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+    //     // }
+    //     std::cout<<"Processor"<<comm->me<<"pars"<<num_local[i_proc]<<std::endl;
+    //     // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+    //     // std::cout << local_matrix << std::endl;
+    //   }
+    //   MPI_Barrier(world); // Ensure synchronized printing
+    // }
     
 
     // Defining the global moment_matrix
@@ -790,7 +764,7 @@ void FixMagnetic::compute_magForce_linalg(){
     // moment_matrix * mom_vec = H_vec
     if (comm->me==0){
       
-      std::cout<< "Global moment matrix gathered" <<std::endl;
+      // std::cout<< "Global moment matrix gathered" <<std::endl;
 
       // H0 Vector
       Eigen::VectorXd H_vec(3*(natoms));
@@ -801,7 +775,7 @@ void FixMagnetic::compute_magForce_linalg(){
 
       mom_vec=moment_matrix.colPivHouseholderQr().solve(H_vec);
 
-      std::cout<< "Solved moments" <<std::endl;
+      // std::cout<< "Solved moments" <<std::endl;
 
       // std::cout<<"Moment Vector"<<mom_vec.transpose()<<std::endl<<std::endl<<std::endl;
     }
@@ -829,39 +803,26 @@ void FixMagnetic::compute_magForce_linalg(){
     // delete memory
     delete []sendcounts;
     delete []displs_send;
-    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
-      if (comm->me == i_proc) {
-        // std::cout<<"proc number"<<i_proc<<std::endl;
-        // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
-        // for (int ii = 0; ii < natoms; ii++)
-        // {
-        //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
-        // }
-        std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
-        std::cout<< "local moments scattered" <<std::endl;
-        // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-        // std::cout << local_matrix << std::endl;
-      }
-      MPI_Barrier(world); // Ensure synchronized printing
-    }
-    
-    
-    // MPI_Bcast(mom_vec.data(), mom_vec.size(), MPI_DOUBLE, 0, world);
-
     // for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
     //   if (comm->me == i_proc) {
-    //     std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
-    //     std::cout << local_mom_vec.transpose() << std::endl;
-    //     std::cout << "Displ " << displs_send[i_proc-1]<<std::endl;
-    //     std::cout << "Sendcounts " << sendcounts[i_proc-1]<<std::endl;
+    //     // std::cout<<"proc number"<<i_proc<<std::endl;
+    //     // std::cout<<"recvcount [i_proc]"<<recvcounts[i_proc]<<"displs [i_proc]"<<displs[i_proc]<<std::endl;
+    //     // for (int ii = 0; ii < natoms; ii++)
+    //     // {
+    //     //   std::cout<<"pos "<<ii<<": "<<x[ii][2]<<std::endl;
+    //     // }
+    //     std::cout<<"Processor"<<comm->me<<"pars"<<inum<<std::endl;
+    //     std::cout<< "local moments scattered" <<std::endl;
+    //     // std::cout << "Process " << comm->me << ": my_variable = " << std::endl;
+    //     // std::cout << local_matrix << std::endl;
     //   }
     //   MPI_Barrier(world); // Ensure synchronized printing
     // }
+   
     
     for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
       i = ilist[ii];
-      // int i_index=atom->tag[i];
       if (mask[i] & groupbit) {
 
         Eigen::Vector3d mu_i_vector;
@@ -873,7 +834,7 @@ void FixMagnetic::compute_magForce_linalg(){
       }      
     }
     
-    std::cout<< "particle moment assigned" <<std::endl;
+    // std::cout<< "particle moment assigned" <<std::endl;
     
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
@@ -937,7 +898,7 @@ void FixMagnetic::compute_magForce_linalg(){
           double mu_i_dot_mu_j = mu_i_vector.dot(mu_j_vector);
           
           double sep_pow4 = std::pow(sep_ij,4);
-          double K = 3*mu0/p4/sep_pow4;
+          double K = 3*MU0/P4/sep_pow4;
           
           Force_mdm_ij = K*(mu_i_dot_sep*mu_j_vector+mu_j_dot_sep*mu_i_vector+(mu_i_dot_mu_j-5*mu_j_dot_sep*mu_i_dot_sep)*SEP_ij/sep_ij);
           
@@ -981,3 +942,54 @@ void FixMagnetic::compute_magForce_linalg(){
     }
   }
 }
+
+
+
+/* ----------------------------------------------------------------------
+  Function to compute separtion distance for a give particle pair
+  4F vector with first three elements being the separation vector and last 
+  one being its magnitude
+  gives zero if they are not neighbors
+------------------------------------------------------------------------- */
+
+// Eigen::VectorXd FixMagnetic::get_SEP_ij_vec(int x, int y) {
+  
+//   int *jlist,*numneigh,**firstneigh;
+//   double *sepneigh, **firstsepneigh;
+  
+//   numneigh = list->numneigh;
+//   firstneigh = list->firstneigh;
+//   firstsepneigh = list->firstsepneigh;
+
+//   Eigen::VectorXd SEP_vec;
+//   SEP_vec = Eigen::VectorXd::Zero(4);
+
+//   int i = x;
+
+//   // Check if atom_id_1 is a local atom
+//   if (i < 0) {
+//     return SEP_vec; 
+//   }
+//   // Get the neighbor list for atom i
+//   jlist = firstneigh[i];
+//   int jnum = numneigh[i];
+//   sepneigh = firstsepneigh[i];
+
+//   // Iterate over the neighbors of atom i
+//   for (int jj = 0; jj < jnum; jj++) {
+//     int j = jlist[jj];
+//     j &= NEIGHMASK; // Apply neighbor mask (if necessary)
+
+//     // Check if the neighbor's atom ID matches atom_id_2
+//     if (j == y) {
+//       // std::cout<<"neighbor pair"<<std::endl<<std::endl;
+//       SEP_vec(0)=sepneigh[4*jj];
+//       SEP_vec(1)=sepneigh[4*jj+1];
+//       SEP_vec(2)=sepneigh[4*jj+2];
+//       SEP_vec(3)=std::sqrt(sepneigh[4*jj+3]);
+//       return SEP_vec; // Atoms are neighbors
+//     }
+//   }
+
+//   return SEP_vec; // Atoms are not neighbors
+// }
