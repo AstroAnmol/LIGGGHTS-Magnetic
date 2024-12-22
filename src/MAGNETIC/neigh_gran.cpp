@@ -484,13 +484,13 @@ void Neighbor::granular_bin_no_newton_ghost(NeighList *list)
 
 void Neighbor::granular_bin_no_newton(NeighList *list)
 {
-  int i,j,k,m,n,nn=0,ibin,d, sn=0;
+  int i,j,k,m,n,nn=0,ibin,d; //, sn=0;
   double xtmp,ytmp,ztmp,delx,dely,delz,rsq;
   double radi,radsum,cutsq;
   int *neighptr,*contact_flag_ptr = NULL;
   double *contact_hist_ptr = NULL;
 
-  double *sepneighptr = NULL;
+  // double *sepneighptr = NULL;
 
   NeighList *listgranhistory;
   int *npartner = NULL,**partner = NULL;
@@ -525,7 +525,7 @@ void Neighbor::granular_bin_no_newton(NeighList *list)
   int nstencil = list->nstencil;
   int *stencil = list->stencil;
   MyPage<int> *ipage = list->ipage;
-  MyPage<double> *spage = list->spage;
+  // MyPage<double> *spage = list->spage;
 
   FixContactHistory *fix_history = list->fix_history; 
   if (fix_history) {
@@ -542,7 +542,7 @@ void Neighbor::granular_bin_no_newton(NeighList *list)
 
   int inum = 0;
   ipage->reset();
-  spage->reset();
+  // spage->reset();
   if (fix_history) {
     ipage_contact_flag->reset();
     dpage_contact_hist->reset();
@@ -550,9 +550,9 @@ void Neighbor::granular_bin_no_newton(NeighList *list)
 
   for (i = 0; i < nlocal; i++) {
     n = 0;
-    sn = 0;
+    // sn = 0;
     neighptr = ipage->vget();
-    sepneighptr = spage->vget();
+    // sepneighptr = spage->vget();
     if (fix_history) {
       nn = 0;
       contact_flag_ptr = ipage_contact_flag->vget();
@@ -590,10 +590,10 @@ void Neighbor::granular_bin_no_newton(NeighList *list)
 
         if (rsq <= cutsq) {
           neighptr[n] = j;
-          sepneighptr[sn++] = delx;
-          sepneighptr[sn++] = dely;
-          sepneighptr[sn++] = delz;        
-          sepneighptr[sn++] = rsq;
+          // sepneighptr[sn++] = delx;
+          // sepneighptr[sn++] = dely;
+          // sepneighptr[sn++] = delz;        
+          // sepneighptr[sn++] = rsq;
 
           if (fix_history) {
             
@@ -635,10 +635,10 @@ void Neighbor::granular_bin_no_newton(NeighList *list)
 
     ilist[inum++] = i;
     firstneigh[i] = neighptr;
-    firstsepneigh[i] = sepneighptr;
+    // firstsepneigh[i] = sepneighptr;
     numneigh[i] = n;
     ipage->vgot(n);
-    spage->vgot(sn);
+    // spage->vgot(sn);
     if (ipage->status())
       error->one(FLERR,"Neighbor list overflow, boost neigh_modify one");
     if (fix_history) {

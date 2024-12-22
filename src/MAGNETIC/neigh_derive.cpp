@@ -494,8 +494,8 @@ void Neighbor::copy_from(NeighList *list)
   list->numneigh = listcopy->numneigh;
   list->firstneigh = listcopy->firstneigh;
   list->firstdouble = listcopy->firstdouble;
-  list->firstsepneigh = listcopy->firstsepneigh;
+  // list->firstsepneigh = listcopy->firstsepneigh;
   list->ipage = listcopy->ipage;
-  list->spage = listcopy->spage;
+  // list->spage = listcopy->spage;
   list->dpage = listcopy->dpage;
 }

@@ -78,14 +78,14 @@ class NeighList : protected Pointers {
   double **firstdouble;            // ptr to 1st J double value of each I atom
   
   // data structs to store neighbor pairs' separation distances 
-  double **firstsepneigh;          // ptr to separation vector and distances (x, y, z, mag) to 1st J neighbors of each I atom
+  //   double **firstsepneigh;          // ptr to separation vector and distances (x, y, z, mag) to 1st J neighbors of each I atom
   
   int pgsize;                      // size of each page
   int oneatom;                     // max size for one atom
   int dnum;                        // # of doubles per neighbor, 0 if none
   MyPage<int> *ipage;              // pages of neighbor indices
   MyPage<double> *dpage;           // pages of neighbor doubles, if dnum > 0
-  MyPage<double> *spage;           // pages of neighbor separation distance vector and mag (x, y, z, mag)
+//   MyPage<double> *spage;           // pages of neighbor separation distance vector and mag (x, y, z, mag)
 
   // atom types to skip when building list
   // iskip,ijskip are just ptrs to corresponding request
