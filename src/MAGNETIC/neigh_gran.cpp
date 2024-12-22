@@ -520,7 +520,7 @@ void Neighbor::granular_bin_no_newton(NeighList *list)
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
 
-  double **firstsepneigh = list->firstsepneigh;
+  // double **firstsepneigh = list->firstsepneigh;
 
   int nstencil = list->nstencil;
   int *stencil = list->stencil;
