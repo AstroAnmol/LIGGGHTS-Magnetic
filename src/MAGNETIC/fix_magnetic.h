@@ -44,6 +44,8 @@ class FixMagnetic : public Fix {
   class NeighList *list;
   int maxatom;
   // double **hfield;
+
+  bool warnflag;
   
   /* ----------------------------------------------------------------
   variables and functions needed for mag force calculation

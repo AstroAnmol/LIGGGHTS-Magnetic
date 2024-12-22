@@ -61,6 +61,7 @@
 #include "error.h"
 
 #include <iostream>
+#include "mpi_liggghts.h"
 #include "comm.h"
 
 #define EIGEN_DONT_PARALLELIZE
@@ -119,6 +120,7 @@ FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
   moment_calc = arg[8];
 
   maxatom = 0;
+  warnflag = true;
   // hfield = NULL;
 }
 
@@ -367,92 +369,146 @@ void FixMagnetic::compute_magForce_converge(){
        First for loop to converge over number of steps
     ------------------------------------------------------------------------- */
 
-    // // Maximum number of steps 
-    // int max_step = 20;
-    // for (int i_step = 0; i_step< max_step; i_step++){
+    // Maximum number of steps 
+    int max_step = 20;
+    // ith step
+    int i_step;
+    // epsilon for convergence
+    double epsilon = 1e-5;
+    // global max_diff
+    double global_max_diff;
+
+    // local mu_diff vector;
+    Eigen::VectorXd local_mu_diff(inum);
+    local_mu_diff.setConstant(1);
+
+    for (i_step = 0; i_step< max_step; i_step++){
+
+      // std::cout<<"i step :"<<i_step<<std::endl;
+
+      for (ii = 0; ii < inum; ii++) {
+        // find the index for ii th local atom
+        i = ilist[ii];
+
+        if (mask[i] & groupbit) {
+
+          // define vector for moment of ith particle
+          Eigen::Vector3d mu_i_vector;
+
+          // get susceptibility of particle ith particle
+          double susc_i= susceptibility_[type[i]-1];
+          double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
+
+          // coefficient for ith particle
+          double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*P4/3;
+
+          // dipole moment based on FDM for ith particle
+          mu_i_vector = C_i*H0;
+          // mu[i][0] = mu_i_vector[0];
+          // mu[i][1] = mu_i_vector[1];
+          // mu[i][2] = mu_i_vector[2];
+          
+          // get neighbor list for the ith particle
+          jlist = firstneigh[i];
+          jnum = numneigh[i];
+
+          // loop over all the neighbors in the system
+          for (jj=0; jj<jnum;jj++){
+            
+            j=jlist[jj];
+
+            // get susceptibility of particle jth particle
+            double susc_j= susceptibility_[type[j]-1];
+            double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
+
+            // Calculate separation distance
+            Eigen::Vector3d SEP_ij;
+            double sep_ij;
+            SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
+            sep_ij=SEP_ij.norm();
+
+            // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
+            // IS LOWER THAN THE SUM OF RADII.
+            // CHANGE IT TO SUM OF RADII IF TRUE.
+            
+            // sum of radii of two particles
+            double rad_sum_ij = rad[i] + rad[j];
+            if (sep_ij/rad_sum_ij<1){
+              SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
+              sep_ij=rad_sum_ij;
+            }
+
+            // moment of jth particle
+            Eigen::Vector3d mu_j_vector;
+            mu_j_vector << mu[j][0], mu[j][1], mu[j][2];  
+
+            // H_dip due to particle jth at particle ith position
+            Eigen::Vector3d H_dip_j;
+
+            double mu_j_dot_sep= mu_j_vector.dot(SEP_ij/sep_ij);
+
+            H_dip_j = (1/P4/sep_ij/sep_ij/sep_ij)*(3*mu_j_dot_sep*(SEP_ij/sep_ij) - mu_j_vector);
+
+            // Modify dipole moment on ith particle due to jth particle
+            mu_i_vector += C_i*H_dip_j;
+          }
+
+          // Check for convergence based on code by Tom
+          if (moment_calc=="converge_check"){
+            double mu_i_dot_mu_i;
+            mu_i_dot_mu_i=mu_i_vector.dot(mu_i_vector);
+            if (mu_i_dot_mu_i > (4*C_i*C_i*H0.dot(H0))){
+              mu_i_vector = 2*C_i*H0.norm()*mu_i_vector/mu_i_vector.norm();
+            }
+          }
+
+          // std::cout<<"i particle: "<<i<<"mu i vector: "<<mu_i_vector.transpose()<<std::endl;
+          // std::cout<<"i particle: "<<i<<"mu i: "<<mu[i][2]<<std::endl;
+          // set local_mu_diff
+          Eigen::Vector3d mu_diff;
+          mu_diff << mu[i][0] - mu_i_vector[0], mu[i][1] - mu_i_vector[1], mu[i][2] - mu_i_vector[2];
+
+          // std::cout<<"i particle: "<<i<<"mu diff vector: "<<mu_diff.transpose()<<std::endl;
+          local_mu_diff[ii] = mu_diff.norm()/C_i/H0.norm();
+
+          mu[i][0]=mu_i_vector[0];
+          mu[i][1]=mu_i_vector[1];
+          mu[i][2]=mu_i_vector[2];
+        }
+      }
+
+      // Find the maximum value of local_mu_diff across all processes
+      double max_local_diff = 0.0;
+      for(int k=0; k<inum; ++k){
+        max_local_diff = std::max(max_local_diff, local_mu_diff[k]);
+      }
       
-    // }
-    
-    for (ii = 0; ii < inum; ii++) {
-      // find the index for ii th local atom
-      i = ilist[ii];
+      
+      MPI_Max_Scalar(max_local_diff, global_max_diff, world);
+      // MPI_Allreduce(&max_local_diff, &global_max_diff, 1, MPI_DOUBLE, MPI_MAX, world);
 
-      if (mask[i] & groupbit) {
-
-        // define vector for moment of ith particle
-        Eigen::Vector3d mu_i_vector;
-
-        // get susceptibility of particle ith particle
-        double susc_i= susceptibility_[type[i]-1];
-        double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
-
-        // coefficient for ith particle
-        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*P4/3;
-
-        // dipole moment based on FDM for ith particle
-        mu_i_vector = C_i*H0;
-        mu[i][0] = mu_i_vector[0];
-        mu[i][1] = mu_i_vector[1];
-        mu[i][2] = mu_i_vector[2];
-        
-        // get neighbor list for the ith particle
-        jlist = firstneigh[i];
-        jnum = numneigh[i];
-
-        // loop over all the neighbors in the system
-        for (jj=0; jj<jnum;jj++){
-          
-          j=jlist[jj];
-
-          // get susceptibility of particle jth particle
-          double susc_j= susceptibility_[type[j]-1];
-          double susc_eff_j=3*susc_j/(susc_j+3); // effective susceptibility
-
-          // Calculate separation distance
-          Eigen::Vector3d SEP_ij;
-          double sep_ij;
-          SEP_ij<<x[i][0]-x[j][0],x[i][1]-x[j][1],x[i][2]-x[j][2];
-          sep_ij=SEP_ij.norm();
-
-          // CHECK IF THE SEPARATION DISTANCE BETWEEN THE TWO PARTICLES
-          // IS LOWER THAN THE SUM OF RADII.
-          // CHANGE IT TO SUM OF RADII IF TRUE.
-          
-          // sum of radii of two particles
-          double rad_sum_ij = rad[i] + rad[j];
-          if (sep_ij/rad_sum_ij<1){
-            SEP_ij=(SEP_ij/sep_ij)*rad_sum_ij;
-            sep_ij=rad_sum_ij;
-          }
-
-          // moment of jth particle
-          Eigen::Vector3d mu_j_vector;
-          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];  
-
-          // H_dip due to particle jth at particle ith position
-          Eigen::Vector3d H_dip_j;
-
-          double mu_j_dot_sep= mu_j_vector.dot(SEP_ij/sep_ij);
-
-          H_dip_j = (1/P4/sep_ij/sep_ij/sep_ij)*(3*mu_j_dot_sep*(SEP_ij/sep_ij) - mu_j_vector);
-
-          // Modify dipole moment on ith particle due to jth particle
-          mu_i_vector += C_i*H_dip_j;
-        }
-
-        // Check for convergence based on code by Tom
-        if (moment_calc=="converge_check"){
-          double mu_i_dot_mu_i;
-          mu_i_dot_mu_i=mu_i_vector.dot(mu_i_vector);
-          if (mu_i_dot_mu_i > (4*C_i*C_i*H0.dot(H0))){
-            mu_i_vector = 2*C_i*H0.norm()*mu_i_vector/mu_i_vector.norm();
-          }
-        }
-        mu[i][0]=mu_i_vector[0];
-        mu[i][1]=mu_i_vector[1];
-        mu[i][2]=mu_i_vector[2];
+      if (global_max_diff <= epsilon) {
+        // std::cout << "Converged in " << i_step + 1 << " steps." << std::endl;
+        break;
       }
     }
+    
+    if(comm->me==0){
+      char errstr[512];
+
+      std::cout<<"Global max"<<global_max_diff<<std::endl;
+
+      if(i_step >= max_step){   
+        sprintf(errstr,"Moment Calculation did not Converge after %d steps",max_step);
+        error->warning(FLERR,errstr);
+       }
+      else{
+        sprintf(errstr,"Moment Calculation converged after %d steps",i_step);
+        error->warning(FLERR,errstr);
+      }
+    }
+
+    
     /* ----------------------------------------------------------------------
       Force Calculation After Moment Calculation
     ------------------------------------------------------------------------- */
