@@ -365,7 +365,7 @@ void FixMagnetic::compute_magForce_converge(){
     ------------------------------------------------------------------------- */
 
     // Maximum number of steps 
-    int max_step = 20;
+    int max_step = 50;
     // ith step
     int i_step;
     // epsilon for convergence
