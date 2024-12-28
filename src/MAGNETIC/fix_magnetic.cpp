@@ -532,7 +532,7 @@ void FixMagnetic::compute_magForce_converge(){
             }
           }
           Eigen::Vector3d diff=mu_i_vec-mu_array.segment(3*i,3);
-          mu_diff(i)=diff.norm()/H0.norm();
+          mu_diff(i)=diff.norm()/H0.norm()/Ci;
           mu_array.segment(3*i,3)=mu_i_vec;
         }
         
