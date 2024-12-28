@@ -373,11 +373,11 @@ void FixMagnetic::compute_magForce_converge(){
 
      // Local matrices
     Eigen::MatrixXd local_matrix;
-    // Eigen::VectorXd local_mu0;
-    Eigen::VectorXd local_index;
+    Eigen::VectorXd local_Ci;
+    Eigen::VectorXi local_index;
 
-    local_index=Eigen::VectorXd::Zero(inum);
-    // local_mu0=Eigen::VectorXd::Zero(3*inum);
+    local_index=Eigen::VectorXi::Zero(inum);
+    local_Ci=Eigen::VectorXd::Zero(inum);
     local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum);
 
     for (ii = 0; ii < inum; ii++){
@@ -386,8 +386,8 @@ void FixMagnetic::compute_magForce_converge(){
 
       if (mask[i] & groupbit) {
 
-          // define vector for moment of ith particle
-          Eigen::Vector3d mu_i_vector;
+        // define vector for moment of ith particle
+        Eigen::Vector3d mu_i_vector;
 
         // get susceptibility of particle ith particle
         double susc_i= susceptibility_[type[i]-1];
@@ -398,9 +398,6 @@ void FixMagnetic::compute_magForce_converge(){
 
         // find global index of ith particle
         int i_index = atom->tag[i];
-
-        // Calcuate matrix diagonals
-        // local_matrix.block((i_index-1)*3,ii*3,3,3)=1/C_i*Eigen::Matrix3d::Identity();
         
         // get neighbor list for the ith particle
         jlist = firstneigh[i];
@@ -436,7 +433,7 @@ void FixMagnetic::compute_magForce_converge(){
           mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
 
           local_matrix.block((j_index-1)*3,ii*3,3,3)=C_i*mom_mat_ij;
-          // local_mu0.segment(3*ii,3)=C_i*H0;
+          local_Ci(ii)=C_i;
           local_index(ii)=i_index;
         }
       }
@@ -471,18 +468,22 @@ void FixMagnetic::compute_magForce_converge(){
 
     // Defining the global moment_matrix
     Eigen::MatrixXd moment_matrix;
-    Eigen::VectorXd column_index;
+    Eigen::VectorXi column_index;
+    Eigen::VectorXd global_Ci;
     if (comm->me==0){
       // 3N X 3N matrix for momemnt calculation where N is total number of particles
       moment_matrix= Eigen::MatrixXd(3*(natoms),3*(natoms)); 
-      column_index= Eigen::VectorXd(natoms);
+      column_index= Eigen::VectorXi(natoms);
+      global_Ci= Eigen::VectorXd(natoms);
     }
     
     // Gather the data
 
     MPI_Gatherv(local_matrix.data(), local_matrix.size(), MPI_DOUBLE, moment_matrix.data(), recvcounts, displs_recv, MPI_DOUBLE, 0, world);
 
-    MPI_Gatherv(local_index.data(), local_index.size(), MPI_DOUBLE, column_index.data(), recvcounts_id, displs_id, MPI_DOUBLE, 0, world);
+    MPI_Gatherv(local_index.data(), local_index.size(), MPI_INT, column_index.data(), recvcounts_id, displs_id, MPI_INT, 0, world);
+
+    MPI_Gatherv(local_Ci.data(), local_Ci.size(), MPI_DOUBLE, global_Ci.data(), recvcounts_id, displs_id, MPI_DOUBLE, 0, world);
 
     // delete memory
     delete []recvcounts;
@@ -493,18 +494,14 @@ void FixMagnetic::compute_magForce_converge(){
     // define the moment_vec for all atoms
     Eigen::VectorXd mom_vec(3*(natoms));
 
-    // use the matrix for linear solver on proc 0
-
-    // moment_matrix * mom_vec = H_vec
+    // run the convergence algorithm on proc 0
     if (comm->me==0){
-
-      // H0 Vector
-      Eigen::VectorXd H_vec(3*(natoms));
-      H_vec = H0.replicate(natoms,1);
       
       Eigen::MatrixXd A(3*natoms, 3*natoms);
       A = Eigen::MatrixXd::Zero(3*natoms,3*natoms);
 
+
+      // arrange the global matrix acc to global index
       for (int k = 0; k < natoms; k++){
         A.block(0,(column_index(k)-1)*3,3*natoms,3) = moment_matrix.block(0,3*k,3*natoms,3);
       }
@@ -512,15 +509,24 @@ void FixMagnetic::compute_magForce_converge(){
       Eigen::VectorXd mu_array(3*natoms);
       Eigen::VectorXd mu_diff(natoms);
 
+      // Covergence loop
       for (i_step = 0; i_step<max_step; i_step++){
 
         for (int i = 0; i < natoms; i++){
+          
+          double Ci= global_Ci(column_index(i)-1);
+
           Eigen::Vector3d mu_i_vec;
-          mu_i_vec = H0;
+          mu_i_vec = Ci*H0;
+
           for (int j = 0; j < natoms; j++){
+
             if (i!=j){
+
               Eigen::Vector3d mu_j_vec;
               mu_j_vec = mu_array.segment(3*j,3);
+
+              // Calculate H_dip
               Eigen::Vector3d C_i_H_dip = A.block(3*i,3*j,3,3)*mu_j_vec;
               mu_i_vec+=C_i_H_dip;
             }
@@ -530,12 +536,14 @@ void FixMagnetic::compute_magForce_converge(){
           mu_array.segment(3*i,3)=mu_i_vec;
         }
         
+        // break the loop if convergence condition reached
         if (mu_diff.maxCoeff()<epsilon){
           break;
         }
         
       }
-
+      
+      // change the moment vector to local proc indices
       for (int k = 0; k < natoms; k++){
         mom_vec.segment(3*k,3) = mu_array.segment(3*(column_index(k)-1),3);
       }
@@ -577,22 +585,22 @@ void FixMagnetic::compute_magForce_converge(){
     delete []displs_send;
     delete []num_local;
    
-    
+    // Set moments to atom variables
     for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
       i = ilist[ii];
       if (mask[i] & groupbit) {
 
-        // get susceptibility of particle ith particle
-        double susc_i= susceptibility_[type[i]-1];
-        double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
+        // // get susceptibility of particle ith particle
+        // double susc_i= susceptibility_[type[i]-1];
+        // double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
-        // coefficient for ith particle
-        double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*P4/3;
+        // // coefficient for ith particle
+        // double C_i = susc_eff_i*rad[i]*rad[i]*rad[i]*P4/3;
 
         Eigen::Vector3d mu_i_vector;
 
-        mu_i_vector=C_i*local_mom_vec.segment(3*(ii),3);
+        mu_i_vector=local_mom_vec.segment(3*(ii),3);
         mu[i][0]=mu_i_vector[0];
         mu[i][1]=mu_i_vector[1];
         mu[i][2]=mu_i_vector[2];
