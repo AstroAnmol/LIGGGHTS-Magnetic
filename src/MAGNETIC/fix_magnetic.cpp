@@ -75,10 +75,10 @@ enum{CONSTANT,EQUAL,ATOM};
 
 FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
-  fix_susceptibility_(0),
-  susceptibility_(0),
   Fix(lmp, narg, arg),
-  N_magforce_timestep(0)
+  N_magforce_timestep(0),
+  fix_susceptibility_(0),
+  susceptibility_(0)
 {
   if (narg != 9) error->all(FLERR,"Illegal fix magnetic command");
 
@@ -274,7 +274,7 @@ void FixMagnetic::post_force(int vflag)
         }
       }
     } 
-    else if(moment_calc=="convergence" || moment_calc=="converge_check"){
+    else if(moment_calc=="convergence"){
       compute_magForce_converge();
     }
     else if(moment_calc=="linalg"){

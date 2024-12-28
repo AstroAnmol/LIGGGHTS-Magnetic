@@ -19,8 +19,6 @@
 // Intiator
 spherical_harmonics::spherical_harmonics(double radius, double susceptibilty, Eigen::Vector3d H0_vec, Eigen::Vector3d SEP_vec, Eigen::Vector3d M_i_vec, Eigen::Vector3d M_j_vec){
 
-
-    // Eigen::initParallel();
     // variable assignment
     a=radius;
     susc=susceptibilty;

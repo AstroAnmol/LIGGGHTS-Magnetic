@@ -228,26 +228,6 @@ void FixCheckTimestepMag::calc_magnetic_estims()
   int *mask = atom->mask;
   int nlocal = atom->nlocal;
 
-  double mag_time_min = 100000.;
-  double mag_time_i;
-
-  if ( !MathExtraLiggghts::compDouble(v_rel_max_sim,0.0) ) {
-    for(int i = 0; i < nlocal; i++){
-        if (mask[i] & groupbit){
-                    
-            const double susc= susceptibility_[type[i]-1];
-
-            mag_time_i = -dF_by_F*MagForceEmperical(susc)/d_MagForceEmperical(susc)/v_rel_max_sim;
-
-            if(mag_time_i<mag_time_min)
-                mag_time_min=mag_time_i;
-        }
-    }
-  }
-
-  MPI_Min_Scalar(mag_time_min,world);
-  magnetic_time = mag_time_min;
-
    //check rayleigh time and vmax of particles
   // rayleigh_time = BIG;
   // r_min = BIG;
@@ -323,6 +303,26 @@ void FixCheckTimestepMag::calc_magnetic_estims()
 
   // decide vmax - either particle-particle or particle-mesh contact
   v_rel_max_sim = std::max(2.*sqrt(vmax_sqr),sqrt(vmax_sqr) + sqrt(vmax_sqr_mesh));
+
+  double mag_time_min = 100000.;
+  double mag_time_i;
+
+  if ( !MathExtraLiggghts::compDouble(v_rel_max_sim,0.0) ) {
+    for(int i = 0; i < nlocal; i++){
+        if (mask[i] & groupbit){
+                    
+            const double susc= susceptibility_[type[i]-1];
+
+            mag_time_i = -dF_by_F*MagForceEmperical(susc)/d_MagForceEmperical(susc)/v_rel_max_sim;
+
+            if(mag_time_i<mag_time_min)
+                mag_time_min=mag_time_i;
+        }
+    }
+  }
+
+  MPI_Min_Scalar(mag_time_min,world);
+  magnetic_time = mag_time_min;
 
 }
 
