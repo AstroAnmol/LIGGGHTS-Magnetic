@@ -59,7 +59,6 @@ class FixMagnetic : public Fix {
   Eigen::Matrix3d Mom_Mat_ij(double sep_ij, Eigen::Vector3d SEP_ij_vec);
   void compute_magForce_linalg();
   void compute_magForce_converge();
-  // Eigen::VectorXd get_SEP_ij_vec(int i, int j);
 
 protected:
   class FixPropertyGlobal* fix_susceptibility_;
