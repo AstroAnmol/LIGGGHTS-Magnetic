@@ -130,13 +130,6 @@ FixCheckTimestepMag::FixCheckTimestepMag(LAMMPS *lmp, int narg, char **arg) :
   fraction_magnetic = 0.;
 }
 
-/* ---------------------------------------------------------------------- */
-
-FixCheckTimestepMag::~FixCheckTimestepMag(){
-  if (susceptibility_)
-    delete []susceptibility_;
-}
-
 
 /* ---------------------------------------------------------------------- */
 
@@ -173,18 +166,18 @@ void FixCheckTimestepMag::init()
 
   properties = atom->get_properties();
   int max_type = properties->max_type();
-  
-  if (susceptibility_) delete []susceptibility_;
-  fix_susceptibility_ = static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
-  susceptibility_ = new double[max_type];
-  
-  for(int i=1;i< max_type+1; i++){
-    susceptibility_[i-1] = fix_susceptibility_->compute_vector(i-1);
-    if(susceptibility_[i-1] <= 0.)
-      error->all(FLERR,"Fix magnetic: magnetic susceptibility must not be <= 0");
-  }
 
-  if(!fix_susceptibility_)
+  // if (susceptibility_) delete []susceptibility_;
+  susceptibility = static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
+  // susceptibility = new double[max_type];
+  
+  // for(int i=1;i< max_type+1; i++){
+  //   susceptibility_[i-1] = fix_susceptibility_->compute_vector(i-1);
+  //   if(susceptibility_[i-1] <= 0.)
+  //     error->all(FLERR,"Fix magnetic: magnetic susceptibility must not be <= 0");
+  // }
+
+  if(!susceptibility)
     error->all(FLERR,"Fix check/timestep/mag only works with a magnetic susceptibility");
 
 
@@ -320,7 +313,7 @@ void FixCheckTimestepMag::calc_magnetic_estims()
     for(int i = 0; i < nlocal; i++){
         if (mask[i] & groupbit){
                     
-            const double susc= susceptibility_[type[i]-1];
+            const double susc= susceptibility->get_values()[type[i]-1];
 
             mag_time_i = -dF_by_F*MagForceEmperical(susc)/d_MagForceEmperical(susc)/v_rel_max_sim;
 

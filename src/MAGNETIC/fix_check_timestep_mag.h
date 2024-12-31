@@ -32,8 +32,7 @@ class FixCheckTimestepMag : public Fix {
   class Properties* properties;
   class PairGran* pg;
   class FixWallGran* fwg;
-  class FixPropertyGlobal* fix_susceptibility_;
-  double *susceptibility_;
+  class FixPropertyGlobal* susceptibility;
   void calc_magnetic_estims();
   bigint mag_timestep_value; // wait these many timesteps before computing force again
   double magnetic_time;
