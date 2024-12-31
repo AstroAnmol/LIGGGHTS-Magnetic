@@ -173,7 +173,8 @@ void FixCheckTimestepMag::init()
 
   properties = atom->get_properties();
   int max_type = properties->max_type();
-
+  
+  if (susceptibility_) delete []susceptibility_;
   fix_susceptibility_ = static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
   susceptibility_ = new double[max_type];
   
