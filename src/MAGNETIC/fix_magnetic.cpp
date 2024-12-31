@@ -60,7 +60,7 @@
 #include "memory.h"
 #include "error.h"
 
-// #include <iostream>
+#include <iostream>
 #include "mpi_liggghts.h"
 #include "comm.h"
 
@@ -380,6 +380,15 @@ void FixMagnetic::compute_magForce_converge(){
     local_Ci=Eigen::VectorXd::Zero(inum);
     local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum);
 
+    for (int i_proc=0;i_proc<comm->nprocs;i_proc++){
+      if (comm->me==i_proc){
+        std::cout<<"i_proc: "<<i_proc<<std::endl;
+        std::cout<<"inum: "<<inum<<std::endl;
+        std::cout<<"natoms: "<<natoms<<std::endl;
+        std::cout<<"------------------------"<<std::endl;
+      }
+    }
+
     for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
       i = ilist[ii];
@@ -398,6 +407,9 @@ void FixMagnetic::compute_magForce_converge(){
 
         // find global index of ith particle
         int i_index = atom->tag[i];
+
+        local_Ci(ii)=C_i;
+        local_index(ii)=i_index;
         
         // get neighbor list for the ith particle
         jlist = firstneigh[i];
@@ -433,8 +445,6 @@ void FixMagnetic::compute_magForce_converge(){
           mom_mat_ij=Mom_Mat_ij(sep_ij, SEP_ij);
 
           local_matrix.block((j_index-1)*3,ii*3,3,3)=C_i*mom_mat_ij;
-          local_Ci(ii)=C_i;
-          local_index(ii)=i_index;
         }
       }
     }
@@ -447,9 +457,9 @@ void FixMagnetic::compute_magForce_converge(){
     // Receive counts and displacements for the data
     int *num_local = new int[comm->nprocs];
     int *recvcounts = new int[comm->nprocs];
-    int *sendcounts = new int[comm->nprocs];
+    // int *sendcounts = new int[comm->nprocs];
     int *displs_recv = new int[comm->nprocs];
-    int *displs_send = new int[comm->nprocs];
+    // int *displs_send = new int[comm->nprocs];
     int *recvcounts_id = new int[comm->nprocs];
     int *displs_id = new int[comm->nprocs];
     MPI_Allgather(&nlocal, 1, MPI_INT, num_local, 1, MPI_INT, world);
@@ -490,6 +500,7 @@ void FixMagnetic::compute_magForce_converge(){
     delete []displs_recv;
     delete []recvcounts_id;
     delete []displs_id;
+    delete []num_local;
 
     // define the moment_vec for all atoms
     Eigen::VectorXd mom_vec(3*(natoms));
@@ -506,7 +517,7 @@ void FixMagnetic::compute_magForce_converge(){
         A.block(0,(column_index(k)-1)*3,3*natoms,3) = moment_matrix.block(0,3*k,3*natoms,3);
       }
 
-      Eigen::VectorXd mu_array(3*natoms);
+      // Eigen::VectorXd mu_array(3*natoms);
       Eigen::VectorXd mu_diff(natoms);
 
       // Covergence loop
@@ -524,16 +535,16 @@ void FixMagnetic::compute_magForce_converge(){
             if (i!=j){
 
               Eigen::Vector3d mu_j_vec;
-              mu_j_vec = mu_array.segment(3*j,3);
+              mu_j_vec = mom_vec.segment(3*j,3);
 
               // Calculate H_dip
               Eigen::Vector3d C_i_H_dip = A.block(3*i,3*j,3,3)*mu_j_vec;
               mu_i_vec+=C_i_H_dip;
             }
           }
-          Eigen::Vector3d diff=mu_i_vec-mu_array.segment(3*i,3);
+          Eigen::Vector3d diff=mu_i_vec-mom_vec.segment(3*i,3);
           mu_diff(i)=diff.norm()/H0.norm()/Ci;
-          mu_array.segment(3*i,3)=mu_i_vec;
+          mom_vec.segment(3*i,3)=mu_i_vec;
         }
         
         // break the loop if convergence condition reached
@@ -544,9 +555,10 @@ void FixMagnetic::compute_magForce_converge(){
       }
       
       // change the moment vector to local proc indices
-      for (int k = 0; k < natoms; k++){
-        mom_vec.segment(3*k,3) = mu_array.segment(3*(column_index(k)-1),3);
-      }
+      // for (int k = 0; k < natoms; k++){
+      //   mom_vec.segment(3*k,3) = mu_array.segment(3*(column_index(k)-1),3);
+      // }
+      // mom_vec=mu_array;
 
       char errstr[512];
 
@@ -564,29 +576,31 @@ void FixMagnetic::compute_magForce_converge(){
       Distribute moments to processors
     ------------------------------------------------------------------------- */
 
-    // Calculate sendcounts and displacements
-    displs_send[0] = 0;
+    MPI_Bcast(mom_vec.data(),mom_vec.size(),MPI_DOUBLE, 0, world);
 
-    for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
-      sendcounts[i_proc] = 3*num_local[i_proc];
-      if (i_proc>0){
-        displs_send[i_proc] = displs_send[i_proc - 1] + sendcounts[i_proc - 1];
-      }      
-    }
+    // // Calculate sendcounts and displacements
+    // displs_send[0] = 0;
 
-    // Create a receive buffer on each processor
-    Eigen::VectorXd local_mom_vec(sendcounts[comm->me]); // Allocate on each processor
+    // for (int i_proc = 0; i_proc < comm->nprocs; i_proc++) {
+    //   sendcounts[i_proc] = 3*num_local[i_proc];
+    //   if (i_proc>0){
+    //     displs_send[i_proc] = displs_send[i_proc - 1] + sendcounts[i_proc - 1];
+    //   }      
+    // }
 
-    // Scatter the vector
-    MPI_Scatterv(mom_vec.data(), sendcounts, displs_send, MPI_DOUBLE, local_mom_vec.data(), sendcounts[comm->me], MPI_DOUBLE, 0, world);
+    // // Create a receive buffer on each processor
+    // Eigen::VectorXd local_mom_vec(sendcounts[comm->me]); // Allocate on each processor
+
+    // // Scatter the vector
+    // MPI_Scatterv(mom_vec.data(), sendcounts, displs_send, MPI_DOUBLE, local_mom_vec.data(), sendcounts[comm->me], MPI_DOUBLE, 0, world);
     
-    // delete memory
-    delete []sendcounts;
-    delete []displs_send;
-    delete []num_local;
+    // // delete memory
+    // delete []sendcounts;
+    // delete []displs_send;
+    // delete []num_local;
    
     // Set moments to atom variables
-    for (ii = 0; ii < inum; ii++){
+    for (ii = 0; ii < natoms; ii++){
       // find the index for ii th local atom
       i = ilist[ii];
       if (mask[i] & groupbit) {
@@ -600,7 +614,9 @@ void FixMagnetic::compute_magForce_converge(){
 
         Eigen::Vector3d mu_i_vector;
 
-        mu_i_vector=local_mom_vec.segment(3*(ii),3);
+        int i_index = atom->tag[i];
+        // mu_i_vector=local_mom_vec.segment(3*(ii),3);
+        mu_i_vector=mom_vec.segment(3*(i_index-1),3);
         mu[i][0]=mu_i_vector[0];
         mu[i][1]=mu_i_vector[1];
         mu[i][2]=mu_i_vector[2];
