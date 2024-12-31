@@ -132,6 +132,14 @@ FixCheckTimestepMag::FixCheckTimestepMag(LAMMPS *lmp, int narg, char **arg) :
 
 /* ---------------------------------------------------------------------- */
 
+FixCheckTimestepMag::~FixCheckTimestepMag(){
+  if (susceptibility_)
+    delete []susceptibility_;
+}
+
+
+/* ---------------------------------------------------------------------- */
+
 int FixCheckTimestepMag::setmask()
 {
   int mask = 0;
