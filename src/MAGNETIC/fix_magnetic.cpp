@@ -75,10 +75,10 @@ enum{CONSTANT,EQUAL,ATOM};
 
 FixMagnetic::FixMagnetic(LAMMPS *lmp, int narg, char **arg) :
 
-  Fix(lmp, narg, arg),
-  N_magforce_timestep(0),
-  fix_susceptibility_(0),
-  susceptibility_(0)
+  Fix(lmp, narg, arg)
+  // N_magforce_timestep(0)
+  // fix_susceptibility_(0),
+  // susceptibility_(0)
 {
   if (narg != 9) error->all(FLERR,"Illegal fix magnetic command");
 
@@ -133,8 +133,8 @@ FixMagnetic::~FixMagnetic()
   delete [] zstr;
   // memory->destroy(hfield);
 
-  if (susceptibility_)
-    delete []susceptibility_;
+  // if (susceptibility_)
+  //   delete []susceptibility_;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -203,18 +203,23 @@ void FixMagnetic::init()
 
   int max_type = atom->get_properties()->max_type();
 
-  if (susceptibility_) delete []susceptibility_;
-  susceptibility_ = new double[max_type];
-  fix_susceptibility_ =
-    static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
+  susceptibility = static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
 
-  // pre-calculate susceptibility 
-  for(int i=1;i< max_type+1; i++)  
-      {
-          susceptibility_[i-1] = fix_susceptibility_->compute_vector(i-1);
-          if(susceptibility_[i-1] <= 0.)
-            error->all(FLERR,"Fix magnetic: magnetic susceptibility must not be <= 0");
-      }
+  if(!susceptibility)
+    error->all(FLERR,"Fix check/timestep/mag only works with a magnetic susceptibility");
+
+  // if (susceptibility_) delete []susceptibility_;
+  // susceptibility_ = new double[max_type];
+  // fix_susceptibility_ =
+  //   static_cast<FixPropertyGlobal*>(modify->find_fix_property("magneticSusceptibility","property/global","peratomtype",max_type,0,style));
+
+  // // pre-calculate susceptibility 
+  // for(int i=1;i< max_type+1; i++)  
+  //     {
+  //         susceptibility_[i-1] = fix_susceptibility_->compute_vector(i-1);
+  //         if(susceptibility_[i-1] <= 0.)
+  //           error->all(FLERR,"Fix magnetic: magnetic susceptibility must not be <= 0");
+  //     }
 }
 
 /* ---------------------------------------------------------------------- */
@@ -354,8 +359,8 @@ void FixMagnetic::compute_magForce_converge(){
   firstneigh = list->firstneigh;
   
   // radius and position structs for each atom
-  rad = atom->radius;
-  x = atom->x;
+  double *rad = atom->radius;
+  double **x = atom->x;
 
   if (varflag == CONSTANT) {
 
@@ -367,7 +372,7 @@ void FixMagnetic::compute_magForce_converge(){
     // Maximum number of steps 
     int max_step = 50;
     // ith step
-    int i_step;
+    int i_step = 0;
     // epsilon for convergence
     double epsilon = 1e-6;
 
@@ -380,14 +385,19 @@ void FixMagnetic::compute_magForce_converge(){
     local_Ci=Eigen::VectorXd::Zero(inum);
     local_matrix=Eigen::MatrixXd::Zero(3 * natoms, 3 * inum);
 
-    for (int i_proc=0;i_proc<comm->nprocs;i_proc++){
-      if (comm->me==i_proc){
-        std::cout<<"i_proc: "<<i_proc<<std::endl;
-        std::cout<<"inum: "<<inum<<std::endl;
-        std::cout<<"natoms: "<<natoms<<std::endl;
-        std::cout<<"------------------------"<<std::endl;
-      }
+    if (comm->me==0){
+      std::cout<<"natoms: "<<natoms<<std::endl;
+      std::cout<<"------------------------"<<std::endl;
     }
+
+    // for (int i_proc=0;i_proc<comm->nprocs;i_proc++){
+    //   if (comm->me==i_proc){
+    //     std::cout<<"i_proc: "<<i_proc<<std::endl;
+    //     std::cout<<"inum: "<<inum<<std::endl;
+    //     std::cout<<"natoms: "<<natoms<<std::endl;
+    //     std::cout<<"------------------------"<<std::endl;
+    //   }
+    // }
 
     for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
@@ -399,7 +409,7 @@ void FixMagnetic::compute_magForce_converge(){
         Eigen::Vector3d mu_i_vector;
 
         // get susceptibility of particle ith particle
-        double susc_i= susceptibility_[type[i]-1];
+        double susc_i= susceptibility->get_values()[type[i]-1];
         double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
         // coefficient for ith particle
@@ -634,7 +644,7 @@ void FixMagnetic::compute_magForce_converge(){
       if (mask[i] & groupbit) {
         
         // get susceptibility of ith particle
-        double susc_i= susceptibility_[type[i]-1];
+        double susc_i= susceptibility->get_values()[type[i]-1];
         // double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
         int i_index = atom->tag[i];
@@ -764,8 +774,8 @@ void FixMagnetic::compute_magForce_linalg(){
   firstneigh = list->firstneigh;
   
   // radius and position structs for each atom
-  rad = atom->radius;
-  x = atom->x;
+  double *rad = atom->radius;
+  double **x = atom->x;
   
   if (varflag == CONSTANT) {
 
@@ -788,7 +798,7 @@ void FixMagnetic::compute_magForce_linalg(){
 
       if (mask[i] & groupbit) {
         // get susceptibility of particle ith particle
-        double susc_i= susceptibility_[type[i]-1];
+        double susc_i= susceptibility->get_values()[type[i]-1];
         double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
         // coefficient for ith particle
@@ -946,7 +956,7 @@ void FixMagnetic::compute_magForce_linalg(){
         // sepneigh = firstsepneigh[i];
 
         // get susceptibility of particle ith particle
-        double susc_i= susceptibility_[type[i]-1];
+        double susc_i= susceptibility->get_values()[type[i]-1];
         // double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
 

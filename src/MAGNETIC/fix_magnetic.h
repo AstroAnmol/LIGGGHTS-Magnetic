@@ -35,8 +35,8 @@ class FixMagnetic : public Fix {
 
  private:
   double ex,ey,ez;
-  double *rad;
-  double **x;
+  // double *rad;
+  // double **x;
   int varflag;
   char *xstr,*ystr,*zstr;
   int xvar,yvar,zvar,xstyle,ystyle,zstyle;
@@ -44,6 +44,8 @@ class FixMagnetic : public Fix {
   class NeighList *list;
   int maxatom;
   // double **hfield;
+
+  class FixPropertyGlobal* susceptibility;
 
   bool warnflag;
   
@@ -60,9 +62,9 @@ class FixMagnetic : public Fix {
   void compute_magForce_linalg();
   void compute_magForce_converge();
 
-protected:
-  class FixPropertyGlobal* fix_susceptibility_;
-  double *susceptibility_;
+// protected:
+  // class FixPropertyGlobal* fix_susceptibility_;
+  // double *susceptibility_;
 
 };
 
