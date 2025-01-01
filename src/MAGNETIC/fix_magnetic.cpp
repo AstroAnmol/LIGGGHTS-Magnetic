@@ -503,13 +503,14 @@ void FixMagnetic::compute_magForce_converge(){
     delete []num_local;
 
     // define the moment_vec for all atoms
-    Eigen::VectorXd mom_vec(3*(natoms));
+    Eigen::VectorXd mom_vec(3*natoms);
 
     // run the convergence algorithm on proc 0
     if (comm->me==0){
       
       Eigen::MatrixXd A(3*natoms, 3*natoms);
       A = Eigen::MatrixXd::Zero(3*natoms,3*natoms);
+      mom_vec=Eigen::VectorXd::Zero(3*natoms);
 
 
       // arrange the global matrix acc to global index
@@ -576,7 +577,7 @@ void FixMagnetic::compute_magForce_converge(){
       Distribute moments to processors
     ------------------------------------------------------------------------- */
 
-    MPI_Bcast(mom_vec.data(),mom_vec.size(),MPI_DOUBLE, 0, world);
+    MPI_Bcast(mom_vec.data(), mom_vec.size(), MPI_DOUBLE, 0, world);
 
     // // Calculate sendcounts and displacements
     // displs_send[0] = 0;
@@ -598,9 +599,9 @@ void FixMagnetic::compute_magForce_converge(){
     // delete []sendcounts;
     // delete []displs_send;
     // delete []num_local;
-   
+
     // Set moments to atom variables
-    for (ii = 0; ii < natoms; ii++){
+    for (ii = 0; ii < inum; ii++){
       // find the index for ii th local atom
       i = ilist[ii];
       if (mask[i] & groupbit) {
@@ -636,9 +637,12 @@ void FixMagnetic::compute_magForce_converge(){
         double susc_i= susceptibility_[type[i]-1];
         // double susc_eff_i=3*susc_i/(susc_i+3); // effective susceptibility
 
+        int i_index = atom->tag[i];
+
         // get moment of ith particle
         Eigen::Vector3d mu_i_vector;
-        mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+        // mu_i_vector << mu[i][0], mu[i][1], mu[i][2];
+        mu_i_vector = mom_vec.segment(3*(i_index-1),3);
 
         // Vectors for storing MDM, SHA and Total force for ith particle
         Eigen::Vector3d Force_mdm_i, Force_SHA_i, Force_tot_i;
@@ -654,9 +658,12 @@ void FixMagnetic::compute_magForce_converge(){
         for (jj=0; jj<jnum;jj++){
           j=jlist[jj];          
 
+          int j_index = atom->tag[j];
+
           // get moment of jth particle
           Eigen::Vector3d mu_j_vector;
-          mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
+          // mu_j_vector << mu[j][0], mu[j][1], mu[j][2];
+          mu_j_vector=mom_vec.segment(3*(j_index-1),3);
 
           // calculate separation distance 
           Eigen::Vector3d SEP_ij;
