@@ -236,11 +236,9 @@ void Neighbor::full_nsq_ghost(NeighList *list)
 
 void Neighbor::full_bin(NeighList *list)
 {
-  int i,j,k,n,itype,jtype,ibin,which, sn=0;
+  int i,j,k,n,itype,jtype,ibin,which;
   double xtmp,ytmp,ztmp,delx,dely,delz,rsq;
   int *neighptr;
-
-  double *sepneighptr = NULL;
 
   // bin owned & ghost atoms
 
@@ -261,25 +259,18 @@ void Neighbor::full_bin(NeighList *list)
   int *ilist = list->ilist;
   int *numneigh = list->numneigh;
   int **firstneigh = list->firstneigh;
-
-  double **firstsepneigh = list->firstsepneigh;
-
   int nstencil = list->nstencil;
   int *stencil = list->stencil;
   MyPage<int> *ipage = list->ipage;
-  MyPage<double> *spage = list->spage;
 
   int inum = 0;
   ipage->reset();
-  spage->reset();
 
   // loop over owned atoms, storing neighbors
 
   for (i = 0; i < nlocal; i++) {
     n = 0;
-    sn=0;
     neighptr = ipage->vget();
-    sepneighptr = spage->vget();
 
     itype = type[i];
     xtmp = x[i][0];
@@ -306,28 +297,11 @@ void Neighbor::full_bin(NeighList *list)
         if (rsq <= cutneighsq[itype][jtype]) {
           if (molecular) {
             which = find_special(special[i],nspecial[i],tag[j]);
-            if (which == 0) {
+            if (which == 0) neighptr[n++] = j;
+            else if (domain->minimum_image_check(delx,dely,delz))
               neighptr[n++] = j;
-              sepneighptr[sn++] = delx;
-              sepneighptr[sn++] = dely;
-              sepneighptr[sn++] = delz;        
-              sepneighptr[sn++] = rsq;
-            }
-            else if (domain->minimum_image_check(delx,dely,delz)){
-              neighptr[n++] = j;
-              sepneighptr[sn++] = delx;
-              sepneighptr[sn++] = dely;
-              sepneighptr[sn++] = delz;        
-              sepneighptr[sn++] = rsq;
-            }
             else if (which > 0) neighptr[n++] = j ^ (which << SBBITS);
-          } else {
-              neighptr[n++] = j;
-              sepneighptr[sn++] = delx;
-              sepneighptr[sn++] = dely;
-              sepneighptr[sn++] = delz;        
-              sepneighptr[sn++] = rsq;
-            }
+          } else neighptr[n++] = j;
         }
       }
     }
@@ -335,9 +309,7 @@ void Neighbor::full_bin(NeighList *list)
     ilist[inum++] = i;
     firstneigh[i] = neighptr;
     numneigh[i] = n;
-    firstsepneigh[i] = sepneighptr;
     ipage->vgot(n);
-    spage->vgot(sn);
     if (ipage->status())
       error->one(FLERR,"Neighbor list overflow, boost neigh_modify one");
   }
